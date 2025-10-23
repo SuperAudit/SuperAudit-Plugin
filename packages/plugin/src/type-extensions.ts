@@ -1,14 +1,43 @@
 // SuperAudit plugin configuration extensions
-// For now, we don't add any custom config options, but this is where they would go
 
 import "hardhat/types/config";
 declare module "hardhat/types/config" {
+  export interface SuperAuditUserConfig {
+    mode?: "basic" | "advanced" | "full";
+    playbook?: string;
+    rules?: string[];
+    format?: "console" | "json" | "sarif";
+    output?: string;
+    ai?: {
+      enabled?: boolean;
+      provider?: "openai" | "anthropic" | "local";
+      model?: string;
+      temperature?: number;
+      maxTokens?: number;
+    };
+  }
+
+  export interface SuperAuditConfig {
+    mode: "basic" | "advanced" | "full";
+    playbook?: string;
+    rules?: string[];
+    format: "console" | "json" | "sarif";
+    output?: string;
+    ai?: {
+      enabled: boolean;
+      provider: "openai" | "anthropic" | "local";
+      model?: string;
+      temperature?: number;
+      maxTokens?: number;
+    };
+  }
+
   interface HardhatUserConfig {
-    // superaudit?: SuperAuditUserConfig; // Future: plugin configuration options
+    superaudit?: SuperAuditUserConfig;
   }
 
   interface HardhatConfig {
-    // superaudit: SuperAuditConfig; // Future: resolved plugin configuration
+    superaudit: SuperAuditConfig;
   }
 }
 

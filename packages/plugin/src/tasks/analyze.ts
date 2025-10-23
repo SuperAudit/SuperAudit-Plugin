@@ -6,7 +6,8 @@ import { DEFAULT_RULES, BASIC_RULES, ADVANCED_RULES } from "../rules/index.js";
 import { loadPlaybookRules, validatePlaybook, getSamplePlaybooks } from "../playbooks/index.js";
 import { LLMClient } from "../ai/llm-client.js";
 import { AIEnhancedRule } from "../rules/ai-enhanced-rule.js";
-import { existsSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
+import { join } from "path";
 import * as dotenv from "dotenv";
 
 // Load environment variables
@@ -23,15 +24,19 @@ export default async function analyzeTask(
   console.log("🔍 SuperAudit - Advanced Smart Contract Security Analysis\n");
 
   try {
-    // Parse command line arguments manually for more flexibility
+    // Get config from hardhat.config.ts (if available)
+    const configDefaults = hre.config.superaudit || {};
+    
+    // Parse command line arguments manually (CLI overrides config)
     const argv = process.argv;
     const args = {
-      playbook: getArgValue(argv, "--playbook"),
-      mode: getArgValue(argv, "--mode"),
-      rules: getArgValue(argv, "--rules"),
-      format: getArgValue(argv, "--format"),
+      playbook: getArgValue(argv, "--playbook") || configDefaults.playbook,
+      mode: getArgValue(argv, "--mode") || configDefaults.mode,
+      rules: getArgValue(argv, "--rules") || (configDefaults.rules ? configDefaults.rules.join(",") : undefined),
+      format: getArgValue(argv, "--format") || configDefaults.format,
+      output: getArgValue(argv, "--output") || configDefaults.output,
       showSamples: hasFlag(argv, "--show-samples"),
-      aiEnabled: hasFlag(argv, "--ai") || process.env.SUPERAUDIT_AI_ENABLED === "true"
+      aiEnabled: hasFlag(argv, "--ai") || configDefaults.ai?.enabled || process.env.SUPERAUDIT_AI_ENABLED === "true"
     };
 
     // Handle special commands
@@ -148,18 +153,22 @@ export default async function analyzeTask(
       
       const aiTime = Date.now() - aiStartTime;
       console.log(`✅ AI enhancement complete (${aiTime}ms)\n`);
+      
+      // Update reporter with AI-enhanced issues
+      reporter.clear();
+      reporter.addIssues(allIssues);
     }
 
     // Output results based on format
     switch (args.format) {
       case "json":
-        outputJSON(reporter.getSummary(), allIssues, analysisTime);
+        outputJSON(reporter.getSummary(), allIssues, analysisTime, args.output);
         break;
       case "sarif":
-        outputSARIF(allIssues, parseResults[0]?.filePath || "");
+        outputSARIF(allIssues, parseResults[0]?.filePath || "", args.output);
         break;
       default:
-        outputConsole(reporter, analysisTime, analysisMode);
+        outputConsole(reporter, analysisTime, analysisMode, args.output);
     }
 
     // Exit with appropriate code
@@ -264,46 +273,93 @@ function showSamplePlaybooks(): void {
 /**
  * Output results in console format
  */
-function outputConsole(reporter: Reporter, analysisTime: number, mode: string): void {
+function outputConsole(reporter: Reporter, analysisTime: number, mode: string, outputFile?: string): void {
+  const output = generateConsoleReport(reporter, analysisTime, mode);
+  
+  if (outputFile) {
+    const filePath = outputFile.endsWith('.txt') ? outputFile : `${outputFile}.txt`;
+    writeFileSync(filePath, stripAnsiCodes(output));
+    console.log(output);
+    console.log(`\n📄 Report saved to: ${filePath}`);
+  } else {
+    console.log(output);
+  }
+}
+
+/**
+ * Generate console report as a string
+ */
+function generateConsoleReport(reporter: Reporter, analysisTime: number, mode: string): string {
+  let output = '';
+  
+  // Capture the reporter output
+  const originalLog = console.log;
+  const logs: string[] = [];
+  console.log = (...args: any[]) => {
+    logs.push(args.join(' '));
+  };
+  
   reporter.printReport();
   
+  console.log = originalLog;
+  output = logs.join('\n');
+  
   const summary = reporter.getSummary();
-  console.log(`\n📈 Analysis Performance:`);
-  console.log(`   Mode: ${mode.toUpperCase()}`);
-  console.log(`   Time: ${analysisTime}ms`);
-  console.log(`   Issues: ${summary.totalIssues}`);
+  output += `\n\n📈 Analysis Performance:`;
+  output += `\n   Mode: ${mode.toUpperCase()}`;
+  output += `\n   Time: ${analysisTime}ms`;
+  output += `\n   Issues: ${summary.totalIssues}`;
   
   if (summary.totalIssues > 0) {
-    console.log(`\n🏁 Analysis complete: Found ${summary.totalIssues} issue(s)`);
+    output += `\n\n🏁 Analysis complete: Found ${summary.totalIssues} issue(s)`;
     if (summary.errorCount > 0) {
-      console.log(`   🔴 Critical/High: ${summary.errorCount}`);
+      output += `\n   🔴 Critical/High: ${summary.errorCount}`;
     }
     if (summary.warningCount > 0) {
-      console.log(`   🟡 Medium: ${summary.warningCount}`);
+      output += `\n   🟡 Medium: ${summary.warningCount}`;
     }
     if (summary.infoCount > 0) {
-      console.log(`   🔵 Low/Info: ${summary.infoCount}`);
+      output += `\n   🔵 Low/Info: ${summary.infoCount}`;
     }
   }
+  
+  return output;
+}
+
+/**
+ * Strip ANSI color codes from string
+ */
+function stripAnsiCodes(str: string): string {
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
 /**
  * Output results in JSON format
  */
-function outputJSON(summary: any, issues: any[], analysisTime: number): void {
+function outputJSON(summary: any, issues: any[], analysisTime: number, outputFile?: string): void {
   const result = {
     summary,
     issues,
     analysisTime,
     timestamp: new Date().toISOString()
   };
-  console.log(JSON.stringify(result, null, 2));
+  
+  const jsonOutput = JSON.stringify(result, null, 2);
+  
+  if (outputFile) {
+    const filePath = outputFile.endsWith('.json') ? outputFile : `${outputFile}.json`;
+    writeFileSync(filePath, jsonOutput);
+    console.log(jsonOutput);
+    console.log(`\n📄 JSON report saved to: ${filePath}`);
+  } else {
+    console.log(jsonOutput);
+  }
 }
 
 /**
  * Output results in SARIF format (basic implementation)
  */
-function outputSARIF(issues: any[], sourceFile: string): void {
+function outputSARIF(issues: any[], sourceFile: string, outputFile?: string): void {
   const sarif = {
     version: "2.1.0",
     $schema: "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -332,7 +388,16 @@ function outputSARIF(issues: any[], sourceFile: string): void {
     }]
   };
   
-  console.log(JSON.stringify(sarif, null, 2));
+  const sarifOutput = JSON.stringify(sarif, null, 2);
+  
+  if (outputFile) {
+    const filePath = outputFile.endsWith('.sarif') ? outputFile : `${outputFile}.sarif`;
+    writeFileSync(filePath, sarifOutput);
+    console.log(sarifOutput);
+    console.log(`\n📄 SARIF report saved to: ${filePath}`);
+  } else {
+    console.log(sarifOutput);
+  }
 }
 
 /**

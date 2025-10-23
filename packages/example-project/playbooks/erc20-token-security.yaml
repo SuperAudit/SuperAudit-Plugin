@@ -1,0 +1,327 @@
+version: "1.0"
+meta:
+  name: "ERC20 Token Security Audit"
+  author: "SuperAudit Team"
+  description: "Comprehensive security analysis for ERC20 token contracts"
+  tags: ["erc20", "token", "defi", "security"]
+  version: "1.0.0"
+  ai:
+    enabled: true
+    provider: "openai"
+    model: "gpt-4o-mini"
+    enhance_findings: true
+    generate_fixes: true
+
+targets:
+  contracts: ["*Token", "Token*", "ERC20*"]
+  exclude: ["Test*", "*Test", "Mock*"]
+
+checks:
+  # Critical: Integer overflow/underflow in transfers
+  - id: "token-arithmetic-overflow"
+    rule: "pattern.arithmetic(operations=['+', '-', '*'], unchecked=true)"
+    severity: "critical"
+    description: "Token arithmetic must be checked to prevent overflow/underflow"
+    ai_prompt: |
+      Analyze this arithmetic operation in the token contract.
+      Consider:
+      1. Can an attacker manipulate balances through overflow/underflow?
+      2. What's the financial impact if totalSupply overflows?
+      3. How to fix: Use Solidity 0.8+ checked math or SafeMath
+      4. Provide secure code example with proper checks
+    mitigation: |
+      For Solidity 0.8+:
+      - Arithmetic is checked by default
+      - Remove 'unchecked' blocks around balance updates
+      
+      For Solidity <0.8:
+      - Use OpenZeppelin's SafeMath library
+      - Example: balanceOf[to] = balanceOf[to].add(value);
+
+  # Critical: Reentrancy in transfer functions
+  - id: "token-transfer-reentrancy"
+    rule: "order.externalBefore(state=['balanceOf', 'totalSupply'])"
+    severity: "critical"
+    description: "State updates must occur before external calls in transfer functions"
+    ai_prompt: |
+      Analyze potential reentrancy vulnerability in token transfers.
+      Explain:
+      1. How could an attacker exploit reentrancy in transfer()?
+      2. What tokens or ETH could be stolen?
+      3. CEI (Checks-Effects-Interactions) pattern implementation
+      4. Code example showing secure transfer pattern
+
+  # High: Missing zero address checks
+  - id: "token-zero-address-check"
+    rule: "pattern.missing(check=['address(0)'], functions=['transfer', 'transferFrom', 'mint', 'burn'])"
+    severity: "high"
+    description: "Token functions should check for zero address to prevent burning tokens"
+    ai_prompt: |
+      Analyze missing zero address validation.
+      Consider:
+      1. What happens if tokens are sent to address(0)?
+      2. Impact on totalSupply and user balances
+      3. Best practices for address validation
+      4. Secure implementation with require statements
+    mitigation: |
+      Add zero address checks:
+      ```solidity
+      function transfer(address to, uint256 value) external returns (bool) {
+          require(to != address(0), "ERC20: transfer to zero address");
+          require(balanceOf[msg.sender] >= value, "ERC20: insufficient balance");
+          balanceOf[msg.sender] -= value;
+          balanceOf[to] += value;
+          emit Transfer(msg.sender, to, value);
+          return true;
+      }
+      ```
+
+  # High: Insufficient balance checks
+  - id: "token-insufficient-balance"
+    rule: "pattern.missing(check=['balanceOf[sender] >= amount'], functions=['transfer', 'transferFrom'])"
+    severity: "high"
+    description: "Transfer functions must validate sufficient balance before transfer"
+    ai_prompt: |
+      Analyze balance validation in transfer functions.
+      Explain:
+      1. What happens without proper balance checks?
+      2. Can underflow occur in older Solidity versions?
+      3. Proper validation pattern with meaningful errors
+      4. How this relates to ERC20 standard compliance
+
+  # High: Missing approval checks in transferFrom
+  - id: "token-missing-allowance"
+    rule: "pattern.missing(check=['allowance[from][msg.sender] >= amount'], functions=['transferFrom'])"
+    severity: "high"
+    description: "transferFrom must check and update allowance"
+    ai_prompt: |
+      Analyze allowance mechanism in transferFrom.
+      Consider:
+      1. How does ERC20 approval system work?
+      2. What if allowance isn't checked or updated?
+      3. Security implications of infinite approvals
+      4. Complete transferFrom implementation example
+    mitigation: |
+      Implement proper transferFrom:
+      ```solidity
+      function transferFrom(address from, address to, uint256 value) external returns (bool) {
+          require(to != address(0), "ERC20: transfer to zero address");
+          require(balanceOf[from] >= value, "ERC20: insufficient balance");
+          require(allowance[from][msg.sender] >= value, "ERC20: insufficient allowance");
+          
+          balanceOf[from] -= value;
+          balanceOf[to] += value;
+          allowance[from][msg.sender] -= value;
+          
+          emit Transfer(from, to, value);
+          return true;
+      }
+      ```
+
+  # High: Unprotected mint function
+  - id: "token-unprotected-mint"
+    rule: "access.missingOwnable(functions=['mint', 'burn'])"
+    severity: "critical"
+    description: "Mint and burn functions must have access control"
+    ai_prompt: |
+      Analyze access control for mint/burn functions.
+      Explain:
+      1. Why is unrestricted minting catastrophic?
+      2. How attackers can inflate supply and dump tokens
+      3. Proper access control patterns (Ownable, AccessControl)
+      4. Code example with onlyOwner modifier
+    mitigation: |
+      Add access control using OpenZeppelin Ownable:
+      ```solidity
+      import "@openzeppelin/contracts/access/Ownable.sol";
+      
+      contract ExampleToken is Ownable {
+          function mint(address to, uint256 value) external onlyOwner returns (bool) {
+              require(to != address(0), "ERC20: mint to zero address");
+              totalSupply += value;
+              balanceOf[to] += value;
+              emit Transfer(address(0), to, value);
+              return true;
+          }
+      }
+      ```
+
+  # Medium: Missing events
+  - id: "token-missing-events"
+    rule: "pattern.missing(event=['Transfer'], functions=['transfer', 'transferFrom', 'mint', 'burn'])"
+    severity: "medium"
+    description: "State-changing functions should emit events per ERC20 standard"
+    ai_prompt: |
+      Analyze event emission in token functions.
+      Consider:
+      1. Why are Transfer events critical for ERC20?
+      2. How do wallets and explorers use events?
+      3. ERC20 standard requirements for events
+      4. Complete implementation with proper events
+
+  # Medium: Return value compliance
+  - id: "token-return-values"
+    rule: "pattern.return(functions=['transfer', 'transferFrom', 'approve'], expected='bool')"
+    severity: "medium"
+    description: "ERC20 functions should return boolean per standard"
+    ai_prompt: |
+      Analyze return value compliance with ERC20 standard.
+      Explain:
+      1. Why do transfer functions need to return bool?
+      2. Compatibility issues with non-compliant tokens
+      3. How DeFi protocols rely on return values
+      4. Proper function signatures per ERC20 spec
+
+  # Low: Missing error messages
+  - id: "token-error-messages"
+    rule: "pattern.require(hasMessage=false)"
+    severity: "low"
+    description: "Require statements should have descriptive error messages"
+    ai_prompt: |
+      Analyze error messaging in token contract.
+      Explain:
+      1. Why are descriptive errors important for UX?
+      2. How errors help with debugging and auditing
+      3. Best practices for error messages
+      4. Examples of clear, actionable errors
+
+  # Low: Magic numbers
+  - id: "token-magic-numbers"
+    rule: "pattern.magicNumber(exclude=[0, 1, 10, 18])"
+    severity: "low"
+    description: "Use named constants instead of magic numbers"
+    ai_prompt: |
+      Analyze use of magic numbers in token contract.
+      Suggest:
+      1. Benefits of named constants for maintainability
+      2. Common token constants (decimals, max supply)
+      3. Gas optimization considerations
+      4. Code refactoring example with constants
+
+  # Medium: totalSupply consistency
+  - id: "token-supply-consistency"
+    rule: "invariant.totalSupply(equals='sum(balanceOf[*])')"
+    severity: "high"
+    description: "Total supply must always equal sum of all balances"
+    ai_prompt: |
+      Analyze totalSupply consistency in token operations.
+      Consider:
+      1. What breaks supply consistency? (minting errors, burns)
+      2. Impact of supply manipulation on token value
+      3. How to maintain invariants in all operations
+      4. Testing strategies for supply consistency
+
+dynamic:
+  scenarios:
+    # Test basic transfer functionality
+    - name: "token-basic-transfer"
+      description: "Test normal token transfer between users"
+      type: "script"
+      steps:
+        - action: "token.mint"
+          target: "user1"
+          value: "1000"
+          expect: "success"
+        - action: "token.transfer"
+          from: "user1"
+          to: "user2"
+          value: "100"
+          expect: "success"
+      assert:
+        - expr: "balanceOf[user1] == 900"
+          severity: "high"
+          description: "Sender balance should decrease"
+        - expr: "balanceOf[user2] == 100"
+          severity: "high"
+          description: "Recipient balance should increase"
+        - expr: "totalSupply == 1000"
+          severity: "critical"
+          description: "Total supply should remain constant"
+
+    # Test overflow protection
+    - name: "token-overflow-protection"
+      description: "Test that arithmetic overflows are prevented"
+      type: "script"
+      steps:
+        - action: "token.mint"
+          target: "attacker"
+          value: "max_uint256 - 100"
+          expect: "success"
+        - action: "token.mint"
+          target: "attacker"
+          value: "200"
+          expect: "revert"
+      assert:
+        - expr: "balanceOf[attacker] < max_uint256"
+          severity: "critical"
+          description: "Balance should not overflow"
+
+    # Test zero address protection
+    - name: "token-zero-address-protection"
+      description: "Test that transfers to zero address are prevented"
+      type: "script"
+      steps:
+        - action: "token.mint"
+          target: "user1"
+          value: "1000"
+          expect: "success"
+        - action: "token.transfer"
+          from: "user1"
+          to: "0x0000000000000000000000000000000000000000"
+          value: "100"
+          expect: "revert"
+      assert:
+        - expr: "balanceOf[address(0)] == 0"
+          severity: "high"
+          description: "Zero address should have zero balance"
+
+    # Test unauthorized minting
+    - name: "token-unauthorized-mint"
+      description: "Test that only authorized users can mint tokens"
+      type: "script"
+      steps:
+        - action: "token.mint"
+          from: "attacker"
+          target: "attacker"
+          value: "1000000"
+          expect: "revert"
+      assert:
+        - expr: "balanceOf[attacker] == 0"
+          severity: "critical"
+          description: "Attacker should not be able to mint tokens"
+
+  invariants:
+    - id: "token-supply-invariant"
+      expression: "totalSupply == sum(balanceOf[*])"
+      description: "Total supply must always equal sum of all balances"
+      severity: "critical"
+    
+    - id: "token-non-negative-balance"
+      expression: "forall(address a): balanceOf[a] >= 0"
+      description: "All balances must be non-negative"
+      severity: "critical"
+    
+    - id: "token-transfer-conservation"
+      expression: "balanceOf[from] + balanceOf[to] == constant (during transfer)"
+      description: "Transfer should not create or destroy tokens"
+      severity: "critical"
+
+  fuzzing:
+    runs: 5000
+    depth: 10
+    strategy: "mutation"
+    timeout: 600
+    targets:
+      - "transfer(address,uint256)"
+      - "transferFrom(address,address,uint256)"
+      - "mint(address,uint256)"
+    properties:
+      - "totalSupply invariant holds"
+      - "No negative balances"
+      - "Transfer events emitted correctly"
+
+reporting:
+  format: "detailed"
+  include_fixes: true
+  risk_score: true
+  confidence_level: true

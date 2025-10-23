@@ -1,5 +1,5 @@
 import { HardhatUserConfig } from "hardhat/config";
-import { HardhatConfig } from "hardhat/types/config";
+import { HardhatConfig, SuperAuditConfig } from "hardhat/types/config";
 import { HardhatUserConfigValidationError } from "hardhat/types/hooks";
 
 /**
@@ -14,9 +14,37 @@ import { HardhatUserConfigValidationError } from "hardhat/types/hooks";
 export async function validatePluginConfig(
   userConfig: HardhatUserConfig,
 ): Promise<HardhatUserConfigValidationError[]> {
-  // For now, SuperAudit plugin doesn't have custom configuration
-  // This is where we would validate plugin-specific config options in the future
-  return [];
+  const errors: HardhatUserConfigValidationError[] = [];
+  
+  if (userConfig.superaudit) {
+    const config = userConfig.superaudit;
+    
+    // Validate mode
+    if (config.mode && !["basic", "advanced", "full"].includes(config.mode)) {
+      errors.push({
+        path: ["superaudit", "mode"],
+        message: `Invalid mode: ${config.mode}. Must be one of: basic, advanced, full`,
+      });
+    }
+    
+    // Validate format
+    if (config.format && !["console", "json", "sarif"].includes(config.format)) {
+      errors.push({
+        path: ["superaudit", "format"],
+        message: `Invalid format: ${config.format}. Must be one of: console, json, sarif`,
+      });
+    }
+    
+    // Validate AI provider
+    if (config.ai?.provider && !["openai", "anthropic", "local"].includes(config.ai.provider)) {
+      errors.push({
+        path: ["superaudit", "ai", "provider"],
+        message: `Invalid AI provider: ${config.ai.provider}. Must be one of: openai, anthropic, local`,
+      });
+    }
+  }
+  
+  return errors;
 }
 
 /**
@@ -34,7 +62,26 @@ export async function resolvePluginConfig(
   userConfig: HardhatUserConfig,
   partiallyResolvedConfig: HardhatConfig,
 ): Promise<HardhatConfig> {
-  // For now, SuperAudit plugin doesn't add custom configuration
-  // Just return the partially resolved config as-is
-  return partiallyResolvedConfig;
+  const userSuperauditConfig = userConfig.superaudit || {};
+  
+  // Resolve SuperAudit configuration with defaults
+  const resolvedSuperauditConfig: SuperAuditConfig = {
+    mode: userSuperauditConfig.mode || "full",
+    playbook: userSuperauditConfig.playbook,
+    rules: userSuperauditConfig.rules,
+    format: userSuperauditConfig.format || "console",
+    output: userSuperauditConfig.output,
+    ai: userSuperauditConfig.ai ? {
+      enabled: userSuperauditConfig.ai.enabled !== false, // default true if ai config exists
+      provider: userSuperauditConfig.ai.provider || "openai",
+      model: userSuperauditConfig.ai.model,
+      temperature: userSuperauditConfig.ai.temperature,
+      maxTokens: userSuperauditConfig.ai.maxTokens,
+    } : undefined,
+  };
+  
+  return {
+    ...partiallyResolvedConfig,
+    superaudit: resolvedSuperauditConfig,
+  };
 }

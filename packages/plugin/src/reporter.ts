@@ -92,7 +92,36 @@ export class Reporter {
     const severity = this.formatSeverity(issue.severity);
     const ruleId = chalk.dim(issue.ruleId);
     
-    return `${location} ${severity} ${ruleId}: ${issue.message}`;
+    let output = `${location} ${severity} ${ruleId}: ${issue.message}`;
+    
+    // Add AI enhancement if present
+    if ((issue as any).aiEnhancement) {
+      const ai = (issue as any).aiEnhancement;
+      
+      output += chalk.cyan("\n\n  🤖 AI ANALYSIS:");
+      output += `\n  ${ai.explanation.split('\n').join('\n  ')}`;
+      
+      if (ai.suggestedFix) {
+        output += chalk.green("\n\n  🔧 SUGGESTED FIX:");
+        output += `\n  ${ai.suggestedFix.split('\n').join('\n  ')}`;
+      }
+      
+      if (ai.additionalContext) {
+        output += chalk.blue("\n\n  📚 ADDITIONAL CONTEXT:");
+        output += `\n  ${ai.additionalContext.split('\n').join('\n  ')}`;
+      }
+      
+      if (ai.riskScore) {
+        const riskColor = ai.riskScore >= 8 ? chalk.red : ai.riskScore >= 5 ? chalk.yellow : chalk.green;
+        output += riskColor(`\n\n  ⚠️  RISK SCORE: ${ai.riskScore}/10`);
+      }
+      
+      if (ai.confidence) {
+        output += chalk.dim(`  •  CONFIDENCE: ${Math.round(ai.confidence * 100)}%`);
+      }
+    }
+    
+    return output;
   }
 
   /**

@@ -39,8 +39,22 @@ export class AIEnhancedRule implements Rule {
   async enhanceIssues(issues: Issue[], contexts: Map<Issue, AnalysisContext>): Promise<Issue[]> {
     const enhanced: Issue[] = [];
 
+    // Define security-critical rules that benefit from AI enhancement
+    const securityRules = new Set([
+      "no-tx-origin",
+      "reentrancy-paths",
+      "external-before-state",
+      "unreachable-code",
+      "reentrancy-paths-analysis",
+      "reentrancy-paths-mitigation"
+    ]);
+
     for (const issue of issues) {
-      if ((issue as any)._needsAIEnhancement) {
+      // Only enhance security-critical issues, skip style/naming issues
+      const shouldEnhance = (issue as any)._needsAIEnhancement && 
+                           securityRules.has(issue.ruleId);
+      
+      if (shouldEnhance) {
         const context = contexts.get(issue) || (issue as any)._aiContext;
         if (context) {
           try {
