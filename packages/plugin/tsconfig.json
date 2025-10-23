@@ -15,5 +15,5 @@
     "isolatedModules": true,
     "typeRoots": ["${configDir}/node_modules/@types"]
   },
-  "exclude": ["${configDir}/dist", "${configDir}/node_modules"]
+  "exclude": ["${configDir}/dist", "${configDir}/node_modules", "${configDir}/test"]
 }
