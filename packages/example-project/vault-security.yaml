@@ -1,0 +1,82 @@
+version: "1.0"
+meta:
+  name: "DeFi Vault Security"
+  author: "SuperAudit Team"
+  description: "Comprehensive security analysis for DeFi vault contracts"
+  tags: ["defi", "vault", "reentrancy", "access-control"]
+  version: "1.0.0"
+
+targets:
+  contracts: ["Vault*", "Strategy*", "*Vault", "*Strategy"]
+  exclude: ["Test*", "*Test"]
+
+checks:
+  # Critical reentrancy protection
+  - id: "vault-external-before-state"
+    rule: "order.externalBefore(state=['shares','totalShares','balance','totalAssets'])"
+    severity: "critical"
+    description: "External calls must not occur before updating critical vault state"
+    
+  # ERC20 transfer safety
+  - id: "unchecked-transfers"
+    rule: "pattern.transferFrom(!checkedReturn)"
+    severity: "high"
+    description: "transferFrom calls must check return value"
+    
+  - id: "unchecked-transfer"
+    rule: "pattern.transfer(!checkedReturn)"  
+    severity: "high"
+    description: "transfer calls must check return value"
+    
+  # Access control for critical functions
+  - id: "missing-access-control"
+    rule: "access.missingOwnable(functions=['withdraw','deposit','emergencyWithdraw','setStrategy'])"
+    severity: "high"
+    description: "Critical vault functions must have access control"
+    
+  # Low-level call safety
+  - id: "dangerous-delegatecall"
+    rule: "pattern.delegatecall(target=untrusted)"
+    severity: "critical"
+    description: "delegatecall to untrusted contracts is dangerous"
+    
+  # Value validation
+  - id: "deposit-amount-validation"
+    rule: "value.range(variable='amount', min=1, max=1000000000000000000000000)"
+    severity: "medium"
+    description: "Deposit amounts should be validated"
+
+dynamic:
+  scenarios:
+    # Classic reentrancy attack scenario
+    - name: "vault-reentrancy-attack"
+      description: "Test if vault is vulnerable to reentrancy during withdrawal"
+      type: "script"
+      steps:
+        - action: "attacker.deposit"
+          value: "10 ether"
+          expect: "success"
+        - action: "attacker.withdraw"
+          value: "5 ether"
+          expect: "success"
+        - action: "attacker.triggerReentrancy"
+          expect: "revert"
+      assert:
+        - expr: "profit(attacker) <= 0"
+          severity: "critical"
+          description: "Attacker should not profit from reentrancy"
+        - expr: "vaultBalance >= userDeposits"
+          severity: "critical"
+          description: "Vault should maintain sufficient balance"
+
+  invariants:
+    - id: "vault-balance-consistency"
+      expression: "vault.balance >= sum(userShares * sharePrice)"
+      description: "Vault balance should always cover user shares"
+      severity: "critical"
+
+  fuzzing:
+    runs: 1000
+    depth: 5
+    strategy: "coverage"
+    timeout: 300
