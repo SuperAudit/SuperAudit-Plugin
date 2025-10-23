@@ -1,0 +1,180 @@
+{
+  "summary": {
+    "totalIssues": 21,
+    "errorCount": 0,
+    "warningCount": 16,
+    "infoCount": 5
+  },
+  "issues": [
+    {
+      "ruleId": "no-tx-origin",
+      "message": "Avoid using tx.origin for authorization. Use msg.sender instead to prevent phishing attacks.",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 105,
+      "column": 16
+    },
+    {
+      "ruleId": "explicit-visibility",
+      "message": "State variable 'userBalances' should have explicit visibility (public, private, or internal)",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 26,
+      "column": 4
+    },
+    {
+      "ruleId": "explicit-visibility",
+      "message": "State variable 'totalDeposits' should have explicit visibility (public, private, or internal)",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 27,
+      "column": 4
+    },
+    {
+      "ruleId": "explicit-visibility",
+      "message": "State variable 'owner' should have explicit visibility (public, private, or internal)",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 28,
+      "column": 4
+    },
+    {
+      "ruleId": "explicit-visibility",
+      "message": "State variable 'paused' should have explicit visibility (public, private, or internal)",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 29,
+      "column": 4
+    },
+    {
+      "ruleId": "function-naming",
+      "message": "Function name 'emergency_withdraw' should follow camelCase convention. Consider: 'emergencyWithdraw'",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 79,
+      "column": 4
+    },
+    {
+      "ruleId": "function-naming",
+      "message": "Function name 'GetUserBalance' should follow camelCase convention. Consider: 'getUserBalance'",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 151,
+      "column": 4
+    },
+    {
+      "ruleId": "function-naming",
+      "message": "Function name 'get_total_deposits' should follow camelCase convention. Consider: 'getTotalDeposits'",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 155,
+      "column": 4
+    },
+    {
+      "ruleId": "function-naming",
+      "message": "Function name 'internal_calculation' should follow camelCase convention. Consider: 'internalCalculation'",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 160,
+      "column": 4
+    },
+    {
+      "ruleId": "reentrancy-paths",
+      "message": "Potential reentrancy vulnerability in function emergency_withdraw. External call allows contract to reenter and access/modify state. [HIGH RISK] This public/external function in emergency_withdraw could be exploited through reentrancy.",
+      "severity": "info",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 80,
+      "column": 8
+    },
+    {
+      "ruleId": "reentrancy-paths",
+      "message": "Potential reentrancy vulnerability in function emergency_withdraw. External call allows contract to reenter and access/modify state. [HIGH RISK] This public/external function in emergency_withdraw could be exploited through reentrancy.",
+      "severity": "info",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 80,
+      "column": 8
+    },
+    {
+      "ruleId": "reentrancy-paths-analysis",
+      "message": "REENTRANCY ATTACK ANALYSIS for function emergency_withdraw:\n\nATTACK VECTOR (emergency_withdraw is publicly callable):\n1. Attacker deploys malicious contract with fallback/receive function\n2. Attacker calls emergency_withdraw with malicious contract address\n3. When emergency_withdraw makes external call, control transfers to attacker\n4. Attacker's contract reenters emergency_withdraw before state is updated\n5. Attacker can exploit inconsistent state to drain funds or manipulate logic\n\nRISK LEVEL: MEDIUM - Function only reads state",
+      "severity": "info",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 79,
+      "column": 0
+    },
+    {
+      "ruleId": "reentrancy-paths-mitigation",
+      "message": "\nMITIGATION 1: Add reentrancy guard\n- Use OpenZeppelin's ReentrancyGuard: import \"@openzeppelin/contracts/security/ReentrancyGuard.sol\"\n- Add \"nonReentrant\" modifier to function emergency_withdraw\n- This prevents any reentrant calls to protected functions\n    ",
+      "severity": "info",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 0,
+      "column": 0
+    },
+    {
+      "ruleId": "reentrancy-paths-mitigation",
+      "message": "\nMITIGATION 3: Use Pull Payment pattern\n- Instead of sending ETH directly, record amount owed to recipient\n- Provide separate withdraw() function for users to claim funds\n- This eliminates external calls from main business logic\n    ",
+      "severity": "info",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol",
+      "line": 0,
+      "column": 0
+    },
+    {
+      "ruleId": "no-tx-origin",
+      "message": "Avoid using tx.origin for authorization. Use msg.sender instead to prevent phishing attacks.",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol",
+      "line": 13,
+      "column": 12
+    },
+    {
+      "ruleId": "no-tx-origin",
+      "message": "Avoid using tx.origin for authorization. Use msg.sender instead to prevent phishing attacks.",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol",
+      "line": 20,
+      "column": 16
+    },
+    {
+      "ruleId": "explicit-visibility",
+      "message": "State variable 'balance' should have explicit visibility (public, private, or internal)",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol",
+      "line": 7,
+      "column": 4
+    },
+    {
+      "ruleId": "explicit-visibility",
+      "message": "State variable 'amount' should have explicit visibility (public, private, or internal)",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol",
+      "line": 8,
+      "column": 4
+    },
+    {
+      "ruleId": "contract-naming",
+      "message": "Contract name 'badContract' should follow PascalCase convention. Consider: 'BadContract'",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol",
+      "line": 6,
+      "column": 0
+    },
+    {
+      "ruleId": "function-naming",
+      "message": "Function name 'BadFunction' should follow camelCase convention. Consider: 'badFunction'",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol",
+      "line": 11,
+      "column": 4
+    },
+    {
+      "ruleId": "function-naming",
+      "message": "Function name 'transfer_tokens' should follow camelCase convention. Consider: 'transferTokens'",
+      "severity": "warning",
+      "file": "/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol",
+      "line": 18,
+      "column": 4
+    }
+  ],
+  "analysisTime": 3,
+  "timestamp": "2025-10-23T16:43:26.653Z"
+}

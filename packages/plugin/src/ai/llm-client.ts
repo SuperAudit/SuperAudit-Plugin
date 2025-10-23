@@ -104,8 +104,9 @@ Provide your analysis in the following JSON format:
     if (!this.openai) throw new Error("OpenAI not initialized");
     
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: this.config.model || "gpt-4",
+      const model = this.config.model || "gpt-4o-mini";  // Default to gpt-4o-mini (supports json_object and is cheaper)
+      const completionParams: any = {
+        model,
         messages: [
           {
             role: "system",
@@ -118,10 +119,35 @@ Provide your analysis in the following JSON format:
         ],
         temperature: this.config.temperature || 0.3,
         max_tokens: this.config.maxTokens || 1000,
-        response_format: { type: "json_object" }
-      });
+      };
 
-      const response = JSON.parse(completion.choices[0].message.content || "{}");
+      // Only add response_format for models that support it
+      if (model.includes("gpt-4o") || model.includes("gpt-4-turbo") || model.includes("gpt-3.5-turbo-1106") || model.includes("gpt-3.5-turbo-0125")) {
+        completionParams.response_format = { type: "json_object" };
+      }
+
+      const completion = await this.openai.chat.completions.create(completionParams);
+
+      const responseText = completion.choices[0].message.content || "{}";
+      
+      // Try to parse as JSON, if it fails, extract JSON from the response
+      let response;
+      try {
+        response = JSON.parse(responseText);
+      } catch {
+        // Try to extract JSON from markdown code blocks or other text
+        const jsonMatch = responseText.match(/```json\n?([\s\S]*?)\n?```/) || responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          response = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        } else {
+          // Fallback: create a basic response from the text
+          response = {
+            explanation: responseText,
+            confidence: 0.5
+          };
+        }
+      }
+      
       return this.validateResponse(response);
     } catch (error) {
       console.warn(`OpenAI API error: ${error}`);

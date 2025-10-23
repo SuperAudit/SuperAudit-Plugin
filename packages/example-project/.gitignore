@@ -4,6 +4,8 @@
 # Compilation output
 /dist
 
+.env    
+
 # test coverage output
 /coverage
 

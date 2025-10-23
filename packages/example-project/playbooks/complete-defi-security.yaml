@@ -1,0 +1,314 @@
+version: "1.0"
+meta:
+  name: "Complete DeFi Project Security Audit"
+  author: "SuperAudit Team"
+  description: "Comprehensive security analysis for complete DeFi projects including tokens, vaults, and protocols"
+  tags: ["defi", "token", "vault", "security", "comprehensive"]
+  version: "1.0.0"
+  ai:
+    enabled: true
+    provider: "openai"
+    model: "gpt-4o-mini"
+    enhance_findings: true
+    generate_fixes: true
+
+targets:
+  contracts: ["*Token", "*Vault", "Token*", "Vault*", "ERC20*", "Strategy*"]
+  exclude: ["Test*", "*Test", "Mock*", "Counter*"]
+
+# ============================================================================
+# ERC20 TOKEN SECURITY CHECKS
+# ============================================================================
+token_checks:
+  - id: "token-arithmetic-overflow"
+    rule: "pattern.arithmetic(operations=['+', '-', '*'], unchecked=true)"
+    severity: "critical"
+    description: "Token arithmetic must be checked to prevent overflow/underflow"
+    category: "token"
+    
+  - id: "token-zero-address-check"
+    rule: "pattern.missing(check=['address(0)'], functions=['transfer', 'transferFrom', 'mint'])"
+    severity: "high"
+    description: "Token functions should check for zero address"
+    category: "token"
+    
+  - id: "token-unprotected-mint"
+    rule: "access.missingOwnable(functions=['mint', 'burn'])"
+    severity: "critical"
+    description: "Mint and burn functions must have access control"
+    category: "token"
+
+# ============================================================================
+# VAULT SECURITY CHECKS
+# ============================================================================
+vault_checks:
+  - id: "vault-reentrancy"
+    rule: "order.externalBefore(state=['shares', 'totalShares', 'balance', 'balanceOf'])"
+    severity: "critical"
+    description: "External calls must not occur before updating critical vault state"
+    category: "vault"
+    
+  - id: "vault-access-control"
+    rule: "access.missingOwnable(functions=['withdraw', 'emergencyWithdraw', 'setStrategy'])"
+    severity: "high"
+    description: "Critical vault functions must have access control"
+    category: "vault"
+
+# ============================================================================
+# UNIVERSAL SECURITY CHECKS
+# ============================================================================
+checks:
+  # Critical: Reentrancy protection
+  - id: "universal-reentrancy"
+    rule: "order.externalBefore(state=['balanceOf', 'totalSupply', 'shares', 'balance'])"
+    severity: "critical"
+    description: "State updates must occur before external calls (CEI pattern)"
+    ai_prompt: |
+      Analyze this potential reentrancy vulnerability.
+      Consider:
+      1. What is the specific attack vector?
+      2. How much value could be stolen?
+      3. Step-by-step exploitation scenario
+      4. Detailed fix with code examples
+      5. Prevention: ReentrancyGuard vs manual checks
+    mitigation: |
+      Follow Checks-Effects-Interactions pattern:
+      1. Checks: Validate all inputs and conditions
+      2. Effects: Update all state variables
+      3. Interactions: Make external calls last
+      
+      Or use OpenZeppelin's ReentrancyGuard:
+      ```solidity
+      import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+      
+      contract MyContract is ReentrancyGuard {
+          function withdraw() external nonReentrant {
+              // Safe from reentrancy
+          }
+      }
+      ```
+
+  # Critical: tx.origin authentication
+  - id: "universal-tx-origin"
+    rule: "pattern.txOrigin(usage='authentication')"
+    severity: "critical"
+    description: "Never use tx.origin for authentication - use msg.sender"
+    ai_prompt: |
+      Analyze tx.origin usage for authentication.
+      Explain:
+      1. How tx.origin differs from msg.sender
+      2. Phishing attack vector explanation
+      3. Real-world attack scenario
+      4. Proper authentication using msg.sender
+    mitigation: |
+      Replace tx.origin with msg.sender:
+      ```solidity
+      // ❌ VULNERABLE
+      require(tx.origin == owner);
+      
+      // ✅ SECURE
+      require(msg.sender == owner);
+      ```
+
+  # High: Zero address validation
+  - id: "universal-zero-address"
+    rule: "pattern.missing(check=['address(0)'])"
+    severity: "high"
+    description: "Functions handling addresses should validate against zero address"
+    ai_prompt: |
+      Analyze missing zero address validation.
+      Consider:
+      1. What happens if funds go to address(0)?
+      2. Permanent token/ETH loss implications
+      3. Where to add checks (constructor, transfers, etc.)
+      4. Best practices for address validation
+
+  # High: Access control
+  - id: "universal-access-control"
+    rule: "access.missing(functions=['mint', 'burn', 'pause', 'withdraw', 'emergencyWithdraw'])"
+    severity: "critical"
+    description: "Sensitive functions must have access control"
+    ai_prompt: |
+      Analyze missing access control on sensitive functions.
+      Explain:
+      1. What damage could unauthorized access cause?
+      2. Financial impact estimation
+      3. Access control patterns (Ownable, AccessControl, roles)
+      4. Implementation guide with examples
+
+  # High: Unchecked return values
+  - id: "universal-unchecked-returns"
+    rule: "pattern.call(checked=false, types=['call', 'delegatecall', 'transfer'])"
+    severity: "high"
+    description: "Always check return values of external calls"
+    ai_prompt: |
+      Analyze unchecked return values.
+      Consider:
+      1. Silent failures and their consequences
+      2. How unchecked transfers lead to fund loss
+      3. Proper error handling patterns
+      4. SafeERC20 usage for token operations
+
+  # Medium: Integer arithmetic
+  - id: "universal-arithmetic"
+    rule: "pattern.arithmetic(unchecked=true)"
+    severity: "medium"
+    description: "Use checked arithmetic or validate operations"
+    ai_prompt: |
+      Analyze arithmetic operations for safety.
+      Explain:
+      1. Overflow/underflow risks in your Solidity version
+      2. Solidity 0.8+ automatic checks vs SafeMath
+      3. When to use unchecked for gas optimization
+      4. Safe arithmetic patterns
+
+  # Medium: Missing events
+  - id: "universal-missing-events"
+    rule: "pattern.stateChange(hasEvent=false)"
+    severity: "medium"
+    description: "State-changing functions should emit events"
+    ai_prompt: |
+      Analyze missing event emissions.
+      Consider:
+      1. Why events are critical for monitoring
+      2. Off-chain indexing and wallet integration
+      3. Audit trail and transparency benefits
+      4. Proper event design patterns
+
+  # Low: Code documentation
+  - id: "universal-documentation"
+    rule: "pattern.missing(natspec=['@notice', '@param', '@return'])"
+    severity: "low"
+    description: "Public functions should have NatSpec documentation"
+    ai_prompt: |
+      Analyze code documentation quality.
+      Suggest:
+      1. Benefits of comprehensive documentation
+      2. NatSpec format and best practices
+      3. How docs improve security reviews
+      4. Template for proper function documentation
+
+  # Low: Function visibility
+  - id: "universal-visibility"
+    rule: "pattern.visibility(missing=true)"
+    severity: "low"
+    description: "Explicitly declare visibility for all functions"
+    ai_prompt: |
+      Analyze function visibility declarations.
+      Explain:
+      1. Public vs External vs Internal vs Private
+      2. Gas implications of visibility choices
+      3. Security implications of incorrect visibility
+      4. Best practices for visibility selection
+
+dynamic:
+  scenarios:
+    # Combined token + vault reentrancy test
+    - name: "cross-contract-reentrancy"
+      description: "Test reentrancy across token and vault interactions"
+      type: "script"
+      steps:
+        - action: "token.mint"
+          target: "attacker"
+          value: "1000 ether"
+        - action: "token.approve"
+          from: "attacker"
+          spender: "vault"
+          value: "1000 ether"
+        - action: "vault.deposit"
+          from: "attacker"
+          value: "1000 ether"
+        - action: "attacker.reentrancyAttack"
+          target: "vault"
+          expect: "revert"
+      assert:
+        - expr: "vault.balance >= userDeposits"
+          severity: "critical"
+        - expr: "profit(attacker) <= 0"
+          severity: "critical"
+
+    # Token supply manipulation test
+    - name: "token-supply-attack"
+      description: "Test unauthorized token minting"
+      type: "script"
+      steps:
+        - action: "token.mint"
+          from: "attacker"
+          target: "attacker"
+          value: "1000000 ether"
+          expect: "revert"
+      assert:
+        - expr: "token.balanceOf[attacker] == 0"
+          severity: "critical"
+
+    # Vault access control test
+    - name: "vault-unauthorized-withdrawal"
+      description: "Test unauthorized emergency withdrawals"
+      type: "script"
+      steps:
+        - action: "vault.deposit"
+          from: "user1"
+          value: "100 ether"
+        - action: "vault.emergencyWithdraw"
+          from: "attacker"
+          expect: "revert"
+      assert:
+        - expr: "vault.balance >= 100 ether"
+          severity: "critical"
+
+  invariants:
+    # Token invariants
+    - id: "token-supply-consistency"
+      expression: "token.totalSupply == sum(token.balanceOf[*])"
+      description: "Token total supply must equal sum of all balances"
+      severity: "critical"
+    
+    # Vault invariants
+    - id: "vault-balance-consistency"
+      expression: "vault.balance >= sum(vault.shares[*] * vault.sharePrice)"
+      description: "Vault balance must cover all user shares"
+      severity: "critical"
+    
+    # Cross-contract invariants
+    - id: "vault-token-consistency"
+      expression: "token.balanceOf[vault] >= vault.totalDeposits"
+      description: "Vault's token balance must cover deposits"
+      severity: "critical"
+
+  fuzzing:
+    runs: 10000
+    depth: 15
+    strategy: "hybrid"  # Combines mutation + coverage
+    timeout: 900
+    targets:
+      - "token.transfer(address,uint256)"
+      - "token.transferFrom(address,address,uint256)"
+      - "token.mint(address,uint256)"
+      - "vault.deposit(uint256)"
+      - "vault.withdraw(uint256)"
+      - "vault.emergencyWithdraw()"
+    properties:
+      - "No invariant violations"
+      - "No unauthorized state changes"
+      - "No reentrancy exploits"
+      - "No integer overflows"
+      - "Events emitted correctly"
+
+reporting:
+  format: "detailed"
+  include_fixes: true
+  risk_score: true
+  confidence_level: true
+  sections:
+    - "executive_summary"
+    - "critical_findings"
+    - "high_severity"
+    - "medium_severity"
+    - "low_severity"
+    - "gas_optimizations"
+    - "best_practices"
+  output:
+    console: true
+    json: "./reports/complete-audit.json"
+    sarif: "./reports/complete-audit.sarif"
+    html: "./reports/complete-audit.html"

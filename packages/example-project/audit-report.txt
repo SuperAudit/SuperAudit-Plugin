@@ -1,0 +1,60 @@
+
+📋 Static Analysis Report
+
+/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol:6:0 [Warning] contract-naming: Contract name 'badContract' should follow PascalCase convention. Consider: 'BadContract'
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol:7:4 [Warning] explicit-visibility: State variable 'balance' should have explicit visibility (public, private, or internal)
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol:8:4 [Warning] explicit-visibility: State variable 'amount' should have explicit visibility (public, private, or internal)
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol:11:4 [Warning] function-naming: Function name 'BadFunction' should follow camelCase convention. Consider: 'badFunction'
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol:13:12 [Warning] no-tx-origin: Avoid using tx.origin for authorization. Use msg.sender instead to prevent phishing attacks.
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol:18:4 [Warning] function-naming: Function name 'transfer_tokens' should follow camelCase convention. Consider: 'transferTokens'
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/TestViolations.sol:20:16 [Warning] no-tx-origin: Avoid using tx.origin for authorization. Use msg.sender instead to prevent phishing attacks.
+
+/Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:0:0 [Info] reentrancy-paths-mitigation: 
+MITIGATION 1: Add reentrancy guard
+- Use OpenZeppelin's ReentrancyGuard: import "@openzeppelin/contracts/security/ReentrancyGuard.sol"
+- Add "nonReentrant" modifier to function emergency_withdraw
+- This prevents any reentrant calls to protected functions
+    
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:0:0 [Info] reentrancy-paths-mitigation: 
+MITIGATION 3: Use Pull Payment pattern
+- Instead of sending ETH directly, record amount owed to recipient
+- Provide separate withdraw() function for users to claim funds
+- This eliminates external calls from main business logic
+    
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:26:4 [Warning] explicit-visibility: State variable 'userBalances' should have explicit visibility (public, private, or internal)
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:27:4 [Warning] explicit-visibility: State variable 'totalDeposits' should have explicit visibility (public, private, or internal)
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:28:4 [Warning] explicit-visibility: State variable 'owner' should have explicit visibility (public, private, or internal)
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:29:4 [Warning] explicit-visibility: State variable 'paused' should have explicit visibility (public, private, or internal)
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:79:0 [Info] reentrancy-paths-analysis: REENTRANCY ATTACK ANALYSIS for function emergency_withdraw:
+
+ATTACK VECTOR (emergency_withdraw is publicly callable):
+1. Attacker deploys malicious contract with fallback/receive function
+2. Attacker calls emergency_withdraw with malicious contract address
+3. When emergency_withdraw makes external call, control transfers to attacker
+4. Attacker's contract reenters emergency_withdraw before state is updated
+5. Attacker can exploit inconsistent state to drain funds or manipulate logic
+
+RISK LEVEL: MEDIUM - Function only reads state
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:79:4 [Warning] function-naming: Function name 'emergency_withdraw' should follow camelCase convention. Consider: 'emergencyWithdraw'
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:80:8 [Info] reentrancy-paths: Potential reentrancy vulnerability in function emergency_withdraw. External call allows contract to reenter and access/modify state. [HIGH RISK] This public/external function in emergency_withdraw could be exploited through reentrancy.
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:80:8 [Info] reentrancy-paths: Potential reentrancy vulnerability in function emergency_withdraw. External call allows contract to reenter and access/modify state. [HIGH RISK] This public/external function in emergency_withdraw could be exploited through reentrancy.
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:105:16 [Warning] no-tx-origin: Avoid using tx.origin for authorization. Use msg.sender instead to prevent phishing attacks.
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:151:4 [Warning] function-naming: Function name 'GetUserBalance' should follow camelCase convention. Consider: 'getUserBalance'
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:155:4 [Warning] function-naming: Function name 'get_total_deposits' should follow camelCase convention. Consider: 'getTotalDeposits'
+  /Users/rudranshshinghal/SuperAudit-Plugin/packages/example-project/contracts/VulnerableVault.sol:160:4 [Warning] function-naming: Function name 'internal_calculation' should follow camelCase convention. Consider: 'internalCalculation'
+
+📊 Summary:
+  Warnings: 16
+  Info: 5
+  Total issues: 21
+
+📈 Analysis Performance:
+   Mode: FULL
+   Time: 5ms
+   Issues: 21
+
+🏁 Analysis complete: Found 21 issue(s)
+   🟡 Medium: 16
+   🔵 Low/Info: 5

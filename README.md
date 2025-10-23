@@ -48,8 +48,12 @@ SuperAudit is a **comprehensive smart contract security analysis plugin** for Ha
 | **CFG Analysis** | Control flow graph construction & analysis | ✅ Complete |
 | **Advanced Rules** | Reentrancy, unreachable code, CEI violations | ✅ Complete |
 | **YAML Playbooks** | Programmable audit logic with DSL | ✅ Complete |
+| **📋 ERC20 Playbook** | Comprehensive token security analysis | ✅ Complete |
+| **📋 Vault Playbook** | DeFi vault and strategy security | ✅ Complete |
+| **📋 Complete DeFi** | Full-stack project audit (tokens + vaults) | ✅ Complete |
 | **Dynamic Testing** | Blockchain forking & fuzzing framework | ✅ Framework Ready |
 | **Multiple Formats** | Console, JSON, SARIF output | ✅ Complete |
+| **📁 File Output** | Save reports to files (txt, json, sarif) | ✅ Complete |
 | **🤖 AI Enhancement** | LLM-powered explanations & fix suggestions | ✅ Complete |
 
 ---
@@ -208,7 +212,49 @@ npx hardhat superaudit --format json > audit-report.json
 
 # SARIF for GitHub Code Scanning
 npx hardhat superaudit --format sarif > audit.sarif
+
+# Save report to file (automatically adds correct extension)
+npx hardhat superaudit --output ./reports/audit-report.txt
 ```
+
+### 4. Configure Output (Optional)
+
+Add to `hardhat.config.ts`:
+
+```typescript
+superaudit: {
+  mode: "full",  // Options: "basic", "advanced", "full"
+  format: "console",  // Options: "console", "json", "sarif"
+  output: "./reports/audit-report.txt"  // Optional: save to file
+}
+```
+
+Or use environment variables in `.env`:
+
+```bash
+SUPERAUDIT_MODE=full
+SUPERAUDIT_FORMAT=console
+SUPERAUDIT_OUTPUT=./audit-report.txt
+```
+
+### 5. Use Specialized Playbooks (Recommended)
+
+SuperAudit includes pre-built playbooks for common contract types:
+
+```typescript
+superaudit: {
+  // For ERC20 tokens
+  playbook: "./playbooks/erc20-token-security.yaml"
+  
+  // For DeFi vaults
+  // playbook: "./vault-security.yaml"
+  
+  // For complete projects (tokens + vaults)
+  // playbook: "./playbooks/complete-defi-security.yaml"
+}
+```
+
+**See [PLAYBOOK-GUIDE.md](./PLAYBOOK-GUIDE.md) for detailed playbook documentation.**
 
 ---
 
@@ -218,6 +264,17 @@ npx hardhat superaudit --format sarif > audit.sarif
 
 ```bash
 cd your-hardhat-project
+npx hardhat superaudit
+```
+
+### Audit ERC20 Token
+
+```bash
+# Set playbook in hardhat.config.ts
+superaudit: {
+  playbook: "./playbooks/erc20-token-security.yaml"
+}
+
 npx hardhat superaudit
 ```
 
@@ -611,6 +668,10 @@ SuperAudit-Plugin/
 │   │   │       └── fuzzing-engine.ts
 │   │   └── package.json
 │   └── example-project/     # Test contracts
+├── USAGE.md                 # Complete usage guide
+├── QUICK-REFERENCE.md       # Quick start guide
+├── FILE-OUTPUT-EXAMPLES.md  # File output examples
+├── IMPLEMENTATION-SUMMARY.md # Technical details
 └── README.md                # This file (complete documentation)
 ```
 
