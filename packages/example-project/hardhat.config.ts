@@ -1,10 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
-import myPlugin from "hardhat-my-plugin";
+import superauditPlugin from "hardhat-superaudit";
 
 export default {
-  plugins: [myPlugin],
+  plugins: [superauditPlugin],
   solidity: "0.8.29",
-  myConfig: {
-    greeting: "Hola",
-  },
 } satisfies HardhatUserConfig;
