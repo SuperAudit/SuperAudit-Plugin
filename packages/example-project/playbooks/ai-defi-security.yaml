@@ -1,0 +1,68 @@
+version: "1.0"
+meta:
+  name: "AI-Enhanced DeFi Security Audit"
+  author: "SuperAudit Team"
+  description: "Comprehensive DeFi security audit with AI-powered analysis and fix suggestions"
+  tags: ["defi", "security", "reentrancy", "access-control"]
+  ai:
+    enabled: true
+    provider: "openai"
+    model: "gpt-4"
+    enhance_findings: true
+    generate_fixes: true
+
+checks:
+  - id: "reentrancy-check"
+    rule: "order.externalBefore(state=['balances', 'totalSupply'])"
+    severity: "critical"
+    description: "Check for reentrancy vulnerabilities in external calls"
+    ai_prompt: |
+      Analyze this code for reentrancy vulnerabilities in the context of DeFi protocols.
+      Consider:
+      1. The specific attack vector for this pattern
+      2. How much ETH or tokens could be stolen
+      3. Detailed step-by-step fix with code examples
+      4. Alternative secure patterns (e.g., ReentrancyGuard)
+      
+      Provide a clear explanation that developers can understand.
+
+  - id: "access-control-check"
+    rule: "pattern.missing(modifier=['onlyOwner'])"
+    severity: "high"
+    description: "Verify critical functions have proper access control"
+    ai_prompt: |
+      Analyze this access control vulnerability.
+      Explain:
+      1. What actions an attacker could perform
+      2. Potential financial impact
+      3. How to implement proper access control
+      4. Best practices for role-based permissions
+
+  - id: "unchecked-return"
+    rule: "pattern.exists(call=['call', 'delegatecall', 'send'], checked=false)"
+    severity: "high"
+    description: "Ensure external call return values are checked"
+    ai_prompt: |
+      Analyze this unchecked return value vulnerability.
+      Consider:
+      1. What happens if the call silently fails?
+      2. How could this lead to fund loss?
+      3. Best practices for handling call failures
+      4. Code example showing proper error handling
+
+  - id: "integer-overflow"
+    rule: "pattern.arithmetic(operations=['*', '+', '-', '/'], unchecked=true)"
+    severity: "medium"
+    description: "Check for unchecked arithmetic that could overflow"
+    ai_prompt: |
+      Analyze this arithmetic operation for overflow/underflow risks.
+      Explain:
+      1. Scenarios where overflow could occur
+      2. Financial impact of overflow exploitation
+      3. Why SafeMath or Solidity 0.8+ checked math is important
+      4. Concrete fix with code examples
+
+targets:
+  contracts: ["*Vault", "*Token", "*Pool", "*Staking"]
+  exclude: ["Mock*", "Test*"]
+
