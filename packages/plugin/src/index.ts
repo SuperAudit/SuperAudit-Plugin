@@ -5,20 +5,14 @@ import type { HardhatPlugin } from "hardhat/types/plugins";
 import "./type-extensions.js";
 
 const plugin: HardhatPlugin = {
-  id: "hardhat-my-plugin",
+  id: "hardhat-superaudit",
   hookHandlers: {
     config: () => import("./hooks/config.js"),
     network: () => import("./hooks/network.js"),
   },
   tasks: [
-    task("my-task", "Prints a greeting.")
-      .addOption({
-        name: "who",
-        description: "Who is receiving the greeting.",
-        type: ArgumentType.STRING,
-        defaultValue: "Hardhat",
-      })
-      .setAction(() => import("./tasks/my-task.js"))
+    task("superaudit", "Run comprehensive security analysis on Solidity contracts with CFG analysis, YAML playbooks, and multiple output formats.")
+      .setAction(() => import("./tasks/analyze.js"))
       .build(),
   ],
 };

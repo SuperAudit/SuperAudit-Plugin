@@ -14,33 +14,8 @@ import { HardhatUserConfigValidationError } from "hardhat/types/hooks";
 export async function validatePluginConfig(
   userConfig: HardhatUserConfig,
 ): Promise<HardhatUserConfigValidationError[]> {
-  if (userConfig.myConfig === undefined) {
-    return [];
-  }
-
-  if (typeof userConfig.myConfig !== "object") {
-    return [
-      {
-        path: ["myConfig"],
-        message: "Expected an object with an optional greeting.",
-      },
-    ];
-  }
-
-  const greeting = userConfig.myConfig?.greeting;
-  if (greeting === undefined) {
-    return [];
-  }
-
-  if (typeof greeting !== "string" || greeting.length === 0) {
-    return [
-      {
-        path: ["myConfig", "greeting"],
-        message: "Expected a non-empty string.",
-      },
-    ];
-  }
-
+  // For now, SuperAudit plugin doesn't have custom configuration
+  // This is where we would validate plugin-specific config options in the future
   return [];
 }
 
@@ -59,11 +34,7 @@ export async function resolvePluginConfig(
   userConfig: HardhatUserConfig,
   partiallyResolvedConfig: HardhatConfig,
 ): Promise<HardhatConfig> {
-  const greeting = userConfig.myConfig?.greeting ?? "Hello";
-  const myConfig = { greeting };
-
-  return {
-    ...partiallyResolvedConfig,
-    myConfig,
-  };
+  // For now, SuperAudit plugin doesn't add custom configuration
+  // Just return the partially resolved config as-is
+  return partiallyResolvedConfig;
 }

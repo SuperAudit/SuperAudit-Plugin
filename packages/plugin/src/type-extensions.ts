@@ -1,13 +1,14 @@
-import { MyPluginConfig, MyPluginUserConfig } from "./types.js";
+// SuperAudit plugin configuration extensions
+// For now, we don't add any custom config options, but this is where they would go
 
 import "hardhat/types/config";
 declare module "hardhat/types/config" {
   interface HardhatUserConfig {
-    myConfig?: MyPluginUserConfig;
+    // superaudit?: SuperAuditUserConfig; // Future: plugin configuration options
   }
 
   interface HardhatConfig {
-    myConfig: MyPluginConfig;
+    // superaudit: SuperAuditConfig; // Future: resolved plugin configuration
   }
 }
 
