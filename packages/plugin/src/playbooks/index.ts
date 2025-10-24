@@ -2,6 +2,9 @@
 export * from "./types.js";
 export { PlaybookParser } from "./parser.js";
 export { DSLInterpreter } from "./dsl/interpreter.js";
+export * from "./registry.js";
+export * from "./registry-utils.js";
+export * from "./lighthouse-storage.js";
 
 // Convenience functions for working with playbooks
 import { PlaybookParser } from "./parser.js";
