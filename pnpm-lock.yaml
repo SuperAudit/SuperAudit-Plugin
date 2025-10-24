@@ -38,6 +38,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.67.0
         version: 0.67.0(zod@3.25.76)
+      '@lighthouse-web3/kavach':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@lighthouse-web3/sdk':
         specifier: ^0.4.3
         version: 0.4.3
@@ -53,6 +56,9 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
+      ethers:
+        specifier: ^6.15.0
+        version: 6.15.0
       glob:
         specifier: ^11.0.3
         version: 11.0.3
@@ -405,6 +411,10 @@ packages:
 
   '@lighthouse-web3/kavach@0.1.9':
     resolution: {integrity: sha512-z9cSapz4dH4Aor88dq/HsTHhi1Sv7o9r/ZaR5+aG5Mp6iy1TTlyXI8vGsNxUvToEb755Ei23S5kyv9tj7xg2CQ==}
+    engines: {node: '>=18.0.0'}
+
+  '@lighthouse-web3/kavach@0.2.1':
+    resolution: {integrity: sha512-0OfZm2+85CqUxcu8Tcwr5/S/66VElmrBMeAEQ6g3jFQ0zBcr1Xy/dVKBFcvxBUlQOoA3HyZFNuxJq+iAtc9F7A==}
     engines: {node: '>=18.0.0'}
 
   '@lighthouse-web3/sdk@0.4.3':
@@ -2422,6 +2432,11 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@lighthouse-web3/kavach@0.1.9':
+    dependencies:
+      bls-eth-wasm: 1.4.0
+      joi: 17.13.3
+
+  '@lighthouse-web3/kavach@0.2.1':
     dependencies:
       bls-eth-wasm: 1.4.0
       joi: 17.13.3
