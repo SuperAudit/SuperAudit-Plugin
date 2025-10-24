@@ -6,6 +6,9 @@
  * - Retrieving playbooks from IPFS by CID
  * - Listing uploaded playbooks
  * - Managing decentralized playbook storage
+ * 
+ * NOTE: Uses a default shared Lighthouse API key for the SuperAudit community.
+ * Users can optionally provide their own API key via LIGHTHOUSE_API_KEY env var.
  */
 
 import lighthouse from "@lighthouse-web3/sdk";
@@ -14,6 +17,10 @@ import { join } from "path";
 import { tmpdir } from "os";
 import axios from "axios";
 import type { PlaybookMeta } from "./types.js";
+
+// Default shared Lighthouse API key for the SuperAudit community
+// This allows users to upload/download playbooks without needing their own API key
+const DEFAULT_LIGHTHOUSE_API_KEY = "ecbf40ec.0e9cd023d26c4a038e0fafa1690f32a3";
 
 /**
  * Configuration for Lighthouse storage
@@ -344,21 +351,24 @@ export function isLighthouseInitialized(): boolean {
 }
 
 /**
- * Initialize Lighthouse from environment variable
+ * Initialize Lighthouse from environment variable or use default shared API key
+ * 
+ * This function will:
+ * 1. Check for user's own LIGHTHOUSE_API_KEY in environment
+ * 2. Fall back to the default shared SuperAudit community API key
+ * 
+ * This ensures users can upload/download playbooks without needing their own API key.
  */
-export function initializeLighthouseFromEnv(): LighthouseStorageManager | null {
-  const apiKey = process.env.LIGHTHOUSE_API_KEY;
+export function initializeLighthouseFromEnv(): LighthouseStorageManager {
+  // Check for user's own API key first
+  const userApiKey = process.env.LIGHTHOUSE_API_KEY;
   
-  if (!apiKey) {
-    console.warn("⚠️  LIGHTHOUSE_API_KEY not found in environment variables");
-    console.warn("   Lighthouse storage features will be disabled");
-    return null;
+  if (userApiKey) {
+    console.log("🔑 Using custom Lighthouse API key from environment");
+    return initializeLighthouse(userApiKey);
   }
-
-  try {
-    return initializeLighthouse(apiKey);
-  } catch (error) {
-    console.error("Failed to initialize Lighthouse:", error);
-    return null;
-  }
+  
+  // Use default shared API key for the community
+  console.log("🌐 Using shared SuperAudit community Lighthouse storage");
+  return initializeLighthouse(DEFAULT_LIGHTHOUSE_API_KEY);
 }

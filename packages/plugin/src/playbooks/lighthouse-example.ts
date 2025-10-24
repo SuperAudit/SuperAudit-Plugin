@@ -9,6 +9,12 @@
  * - @lighthouse-web3/sdk installed
  */
 
+import dotenv from "dotenv";
+import { join } from "path";
+import { tmpdir } from "os";
+import { writeFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 import {
   initializeRegistry,
   getPlaybookRegistry,
@@ -19,9 +25,13 @@ import {
   loadRulesFromRegistry,
   getSamplePlaybooks,
 } from "./index.js";
-import { writeFileSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
+
+// ES module compatibility
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: join(__dirname, "../../.env") });
 
 async function main() {
   console.log("🚀 Lighthouse Integration Example\n");

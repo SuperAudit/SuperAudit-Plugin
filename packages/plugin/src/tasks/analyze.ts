@@ -4,6 +4,13 @@ import { RuleEngine } from "../rules/engine.js";
 import { Reporter } from "../reporter.js";
 import { DEFAULT_RULES, BASIC_RULES, ADVANCED_RULES } from "../rules/index.js";
 import { loadPlaybookRules, validatePlaybook, getSamplePlaybooks } from "../playbooks/index.js";
+import { 
+  initializeRegistry,
+  getPlaybookRegistry,
+  initializeLighthouseFromEnv,
+  isLighthouseInitialized,
+  loadRulesFromRegistry
+} from "../playbooks/index.js";
 import { LLMClient } from "../ai/llm-client.js";
 import { AIEnhancedRule } from "../rules/ai-enhanced-rule.js";
 import { existsSync, writeFileSync } from "fs";
@@ -24,6 +31,24 @@ export default async function analyzeTask(
   console.log("🔍 SuperAudit - Advanced Smart Contract Security Analysis\n");
 
   try {
+    // Initialize playbook registry and Lighthouse (always available with default shared API key)
+    const lighthouse = initializeLighthouseFromEnv();
+    
+    const builtins = getSamplePlaybooks();
+    await initializeRegistry(builtins);
+    
+    // Sync from Lighthouse (shared community playbooks)
+    try {
+      const registry = getPlaybookRegistry();
+      const synced = await registry.syncFromLighthouse();
+      if (synced.length > 0) {
+        console.log(`✅ Loaded ${synced.length} shared playbook(s) from community\n`);
+      }
+    } catch (error) {
+      // Silently fail sync - not critical
+      console.log();
+    }
+    
     // Get config from hardhat.config.ts (if available)
     const configDefaults = hre.config.superaudit || {};
     
@@ -31,17 +56,71 @@ export default async function analyzeTask(
     const argv = process.argv;
     const args = {
       playbook: getArgValue(argv, "--playbook") || configDefaults.playbook,
+      playbookCid: getArgValue(argv, "--playbook-cid"),
+      playbookId: getArgValue(argv, "--playbook-id"),
       mode: getArgValue(argv, "--mode") || configDefaults.mode,
       rules: getArgValue(argv, "--rules") || (configDefaults.rules ? configDefaults.rules.join(",") : undefined),
       format: getArgValue(argv, "--format") || configDefaults.format,
       output: getArgValue(argv, "--output") || configDefaults.output,
       showSamples: hasFlag(argv, "--show-samples"),
+      listPlaybooks: hasFlag(argv, "--list-playbooks"),
+      uploadPlaybook: getArgValue(argv, "--upload-playbook"),
       aiEnabled: hasFlag(argv, "--ai") || configDefaults.ai?.enabled || process.env.SUPERAUDIT_AI_ENABLED === "true"
     };
 
     // Handle special commands
     if (args.showSamples) {
       showSamplePlaybooks();
+      return;
+    }
+    
+    // Handle --list-playbooks
+    if (args.listPlaybooks) {
+      const registry = getPlaybookRegistry();
+      const allPlaybooks = registry.getAll();
+      console.log("📋 Registered Playbooks:\n");
+      for (const pb of allPlaybooks) {
+        console.log(`  🔸 ${pb.id}`);
+        console.log(`     Name: ${pb.meta.name}`);
+        console.log(`     Author: ${pb.meta.author || 'unknown'}`);
+        console.log(`     Source: ${pb.source.type}`);
+        if (pb.source.cid) {
+          console.log(`     CID: ${pb.source.cid}`);
+        }
+        console.log();
+      }
+      console.log(`Total: ${allPlaybooks.length} playbook(s)`);
+      return;
+    }
+    
+    // Handle --upload-playbook
+    if (args.uploadPlaybook) {
+      if (!existsSync(args.uploadPlaybook)) {
+        throw new Error(`Playbook file not found: ${args.uploadPlaybook}`);
+      }
+      
+      console.log(`📤 Uploading playbook to shared community storage...\n`);
+      console.log(`   File: ${args.uploadPlaybook}\n`);
+      
+      const progressCallback = (progressData: any) => {
+        const percentage = 100 - ((progressData?.total / progressData?.uploaded) * 100 || 0);
+        process.stdout.write(`\r   Upload progress: ${percentage.toFixed(2)}%`);
+      };
+      
+      const registry = getPlaybookRegistry();
+      const registered = await registry.uploadAndRegisterToLighthouse(
+        args.uploadPlaybook,
+        undefined,
+        progressCallback
+      );
+      
+      console.log(`\n\n✅ Playbook uploaded to community storage!`);
+      console.log(`   ID: ${registered.id}`);
+      console.log(`   Name: ${registered.meta.name}`);
+      console.log(`   CID: ${registered.source.cid}`);
+      console.log(`   URL: ${registered.source.location}`);
+      console.log(`\n💡 Anyone can now use this playbook with:`);
+      console.log(`   npx hardhat superaudit --playbook-cid ${registered.source.cid}`);
       return;
     }
 
@@ -213,7 +292,25 @@ async function determineAnalysisRules(args: any): Promise<{
   rules: any[], 
   analysisMode: string
 }> {
-  // If playbook is specified, load rules from playbook
+  // If playbook CID is specified, load from Lighthouse (shared community storage)
+  if (args.playbookCid) {
+    console.log(`📥 Loading playbook from community storage...`);
+    console.log(`   CID: ${args.playbookCid}\n`);
+    const registry = getPlaybookRegistry();
+    const registered = await registry.registerFromLighthouse(args.playbookCid);
+    const playbookRules = await loadRulesFromRegistry(registered.id);
+    console.log(`✅ Loaded "${registered.meta.name}" from IPFS\n`);
+    return { rules: [...BASIC_RULES, ...playbookRules], analysisMode: "community-playbook" };
+  }
+  
+  // If playbook ID is specified, load from registry
+  if (args.playbookId) {
+    console.log(`📋 Loading playbook from registry: ${args.playbookId}`);
+    const playbookRules = await loadRulesFromRegistry(args.playbookId);
+    return { rules: [...BASIC_RULES, ...playbookRules], analysisMode: "registry" };
+  }
+  
+  // If playbook file is specified, load rules from playbook
   if (args.playbook) {
     if (!existsSync(args.playbook)) {
       throw new Error(`Playbook file not found: ${args.playbook}`);
