@@ -34,18 +34,18 @@ export interface PlaybookAIConfig {
 
 export interface PlaybookTargets {
   contracts?: string[]; // Contract name patterns to analyze
-  functions?: string[]; // Function name patterns to analyze  
-  exclude?: string[];   // Patterns to exclude from analysis
+  functions?: string[]; // Function name patterns to analyze
+  exclude?: string[]; // Patterns to exclude from analysis
 }
 
 export interface PlaybookCheck {
   id: string;
-  rule: string;        // DSL rule expression
+  rule: string; // DSL rule expression
   severity: "critical" | "high" | "medium" | "low" | "info";
   description?: string;
   enabled?: boolean;
   params?: Record<string, any>; // Rule-specific parameters
-  ai_prompt?: string;  // Custom AI prompt for this check
+  ai_prompt?: string; // Custom AI prompt for this check
 }
 
 export interface DynamicAnalysis {
@@ -64,14 +64,14 @@ export interface DynamicScenario {
 }
 
 export interface ScenarioStep {
-  action: string;      // e.g., "attacker.depositETH", "vault.withdraw"  
-  value?: string;      // e.g., "5 ether", "1000"
+  action: string; // e.g., "attacker.depositETH", "vault.withdraw"
+  value?: string; // e.g., "5 ether", "1000"
   params?: Record<string, any>;
   expect?: "success" | "revert" | "any";
 }
 
 export interface AssertionCheck {
-  expr: string;        // e.g., "profit(attacker) > 0"
+  expr: string; // e.g., "profit(attacker) > 0"
   severity: "critical" | "high" | "medium" | "low";
   description?: string;
 }
@@ -84,35 +84,35 @@ export interface ScenarioSetup {
 
 export interface ContractDeployment {
   name: string;
-  contract: string;    // Contract name to deploy
-  params?: any[];      // Constructor parameters
-  role?: string;       // e.g., "attacker", "victim", "oracle"
+  contract: string; // Contract name to deploy
+  params?: any[]; // Constructor parameters
+  role?: string; // e.g., "attacker", "victim", "oracle"
 }
 
 export interface AccountSetup {
   name: string;
-  role: string;        // e.g., "owner", "user", "attacker"
-  balance?: string;    // e.g., "100 ether"
+  role: string; // e.g., "owner", "user", "attacker"
+  balance?: string; // e.g., "100 ether"
 }
 
 export interface BlockchainSetup {
-  fork?: string;       // Network to fork (mainnet, goerli, etc.)  
+  fork?: string; // Network to fork (mainnet, goerli, etc.)
   blockNumber?: number;
   timestamp?: number;
 }
 
 export interface InvariantCheck {
   id: string;
-  expression: string;  // e.g., "sum(balances) == totalSupply"
+  expression: string; // e.g., "sum(balances) == totalSupply"
   description?: string;
   severity: "critical" | "high" | "medium" | "low";
 }
 
 export interface FuzzingConfig {
-  runs?: number;       // Number of fuzzing runs
-  depth?: number;      // Max call sequence depth
+  runs?: number; // Number of fuzzing runs
+  depth?: number; // Max call sequence depth
   strategy?: "random" | "coverage" | "mutation";
-  timeout?: number;    // Timeout in seconds
+  timeout?: number; // Timeout in seconds
 }
 
 /**
@@ -124,18 +124,14 @@ export interface ParsedRule {
   params: RuleParams;
 }
 
-export type RuleType = 
-  | "order"           // Execution order rules
-  | "pattern"         // Pattern matching rules  
-  | "access"          // Access control rules
-  | "value"           // Value/range rules
-  | "custom";         // Custom rule logic
+export type RuleType =
+  | "order" // Execution order rules
+  | "pattern" // Pattern matching rules
+  | "access" // Access control rules
+  | "value" // Value/range rules
+  | "custom"; // Custom rule logic
 
-export type RuleCategory =
-  | "security"
-  | "style" 
-  | "optimization"
-  | "compliance";
+export type RuleCategory = "security" | "style" | "optimization" | "compliance";
 
 export interface RuleParams {
   [key: string]: any;
@@ -177,8 +173,8 @@ export interface ParsedScenarioStep {
 }
 
 export interface ParsedAction {
-  target: string;      // Contract or actor name
-  method: string;      // Method to call
+  target: string; // Contract or actor name
+  method: string; // Method to call
   type: "call" | "send" | "deploy" | "set";
 }
 
@@ -186,7 +182,7 @@ export interface ParsedAction {
  * Execution results from playbook scenarios
  */
 export interface PlaybookExecutionResult {
-  playbook: string;    // Playbook name
+  playbook: string; // Playbook name
   staticResults: StaticRuleResult[];
   dynamicResults: DynamicScenarioResult[];
   summary: ExecutionSummary;
@@ -195,7 +191,7 @@ export interface PlaybookExecutionResult {
 export interface StaticRuleResult {
   ruleId: string;
   violations: number;
-  issues: any[];       // Actual issue objects
+  issues: any[]; // Actual issue objects
   executionTime: number;
 }
 
