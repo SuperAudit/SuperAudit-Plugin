@@ -1,0 +1,590 @@
+metadata:
+  id: "bonding-curve-security"
+  name: "Bonding Curve Security Analysis"
+  author: "SuperAudit Security Team"
+  version: "1.0.0"
+  description: "Comprehensive security analysis for bonding curve contracts with focus on reentrancy, access control, and price manipulation vulnerabilities"
+  tags:
+    - "defi"
+    - "bonding-curve"
+    - "token-economics"
+    - "reentrancy"
+    - "access-control"
+  targetContracts:
+    - "VulnerableBondingCurve"
+    - "*BondingCurve*"
+
+rules:
+  # REENTRANCY VULNERABILITIES
+  - id: "bonding-curve-buy-reentrancy"
+    name: "Reentrancy in Buy Function"
+    severity: "critical"
+    pattern: "pattern.functionCall(name='buy') && pattern.externalCall(before='stateUpdate')"
+    message: |
+      CRITICAL: The buy() function calls token.transfer() BEFORE updating userBalances.
+      An attacker can exploit this with a fallback function to drain the contract.
+      
+      ATTACK SCENARIO:
+      1. Attacker calls buy(1000 tokens)
+      2. token.transfer() is called, but attacker's contract receives tokens with fallback
+      3. Fallback function calls buy() again before userBalances is updated
+      4. Attacker can repeatedly withdraw more tokens than they paid for
+      
+      FIX: Follow Check-Effects-Interactions (CEI) pattern:
+      - Update userBalances FIRST
+      - Call external function LAST
+      - Or use ReentrancyGuard from OpenZeppelin
+
+  - id: "bonding-curve-sell-reentrancy"
+    name: "Critical Reentrancy in Sell Function"
+    severity: "critical"
+    pattern: "pattern.functionCall(name='sell') && pattern.callFunction(name='call', before='stateUpdate')"
+    message: |
+      CRITICAL: The sell() function uses low-level call() to send ETH BEFORE updating state.
+      This is a classic reentrancy vulnerability on the ETH side.
+      
+      ATTACK FLOW:
+      1. Attacker calls sell(100 tokens)
+      2. msg.sender.call{value: payment}("") is executed
+      3. Attacker's fallback receives ETH and calls sell() again
+      4. userBalances hasn't been decremented yet!
+      5. Attacker can sell the same tokens multiple times
+      
+      IMPACT: Complete contract drain, attacker steals all ETH
+      
+      SOLUTION: Move state updates BEFORE the external call:
+        uint256 amount = amount;
+        userBalances[msg.sender] -= amount;  // UPDATE FIRST
+        reserveBalance -= payment;
+        tokenSupply += amount;
+        
+        (bool success, ) = msg.sender.call{value: payment}("");  // CALL AFTER
+        require(success);
+
+  # ACCESS CONTROL VULNERABILITIES
+  - id: "bonding-curve-missing-access-control-buy"
+    name: "Missing Access Control on Buy Function"
+    severity: "high"
+    pattern: "pattern.functionCall(name='buy') && pattern.noRequire(modifier='onlyOwner')"
+    message: |
+      HIGH: buy() function has no access control checks.
+      Anyone can call it, potentially with zero value or malicious intent.
+      
+      Consider:
+      - Pause mechanism check
+      - Whitelist validation
+      - Minimum/maximum purchase limits
+      - Caller reputation checks
+
+  - id: "bonding-curve-tx-origin-bug"
+    name: "Incorrect Authorization Using tx.origin"
+    severity: "critical"
+    pattern: "pattern.functionCall(name='sell') && pattern.memberAccess(member='tx.origin')"
+    message: |
+      CRITICAL: Using tx.origin for authorization is fundamentally broken.
+      
+      WHY THIS IS WRONG:
+      1. tx.origin is the original EOA that initiated the transaction chain
+      2. If a contract calls this contract, tx.origin != msg.sender
+      3. An attacker can force a delegatecall to bypass this check
+      4. This only prevents contract-to-contract calls, not actual authorization
+      
+      CORRECT APPROACH:
+      Use msg.sender instead of tx.origin:
+        require(msg.sender == owner, "Unauthorized");
+      
+      If you need contract-to-contract safety:
+        Use OpenZeppelin's AccessControl with roles
+        Implement proper delegatecall protections
+
+  - id: "bonding-curve-selfdestruct-unprotected"
+    name: "Unprotected Selfdestruct Function"
+    severity: "critical"
+    pattern: "pattern.functionCall(name='emergencyStop') && pattern.selfdestruct(unprotected=true)"
+    message: |
+      CRITICAL: emergencyStop() can be called by ANYONE to selfdestruct the contract.
+      This will destroy all contract state and send remaining ETH to an attacker.
+      
+      IMPACT:
+      - All user balances become inaccessible
+      - All reserve funds stolen
+      - Contract permanently destroyed
+      
+      FIX: Add proper access control:
+        function emergencyStop(address payable recipient) external onlyOwner {
+            selfdestruct(recipient);
+        }
+
+  - id: "bonding-curve-resetreserve-unprotected"
+    name: "Unprotected State Reset Function"
+    severity: "critical"
+    pattern: "pattern.functionCall(name='resetReserve') && pattern.noRequire(check='ownerOnly')"
+    message: |
+      CRITICAL: resetReserve() can be called by anyone to reset contract state.
+      This allows attackers to:
+      1. Zero out the reserve balance
+      2. Reset token supply to initial values
+      3. Break all accounting and pricing mechanisms
+      
+      Requires onlyOwner or similar protection:
+        require(msg.sender == owner, "Unauthorized");
+
+  # PRICE MANIPULATION VULNERABILITIES
+  - id: "bonding-curve-naive-pricing"
+    name: "Naive Price Calculation Vulnerable to Flash Loans"
+    severity: "high"
+    pattern: "pattern.functionCall(name='sell') && pattern.calculation(operator='/')"
+    message: |
+      HIGH: Price calculation is based on current contract state without protection.
+      Vulnerable to flash loan attacks:
+      
+      ATTACK:
+      1. Flash loan: Borrow huge amount of tokens (no fee yet)
+      2. Dump all tokens into sell(): price = reserveBalance / tokenSupply
+      3. Manipulate price downward significantly
+      4. Take advantage of low price
+      5. Flash loan is repaid automatically
+      
+      SOLUTIONS:
+      - Use oracle prices (Chainlink, Uniswap TWAP)
+      - Implement time-weighted average price (TWAP)
+      - Add slippage protection parameters
+      - Use exponential moving average of prices
+
+  # STATE MANAGEMENT VULNERABILITIES
+  - id: "bonding-curve-unreachable-code"
+    name: "Unreachable Code in Withdraw Function"
+    severity: "medium"
+    pattern: "pattern.unreachableCode() && pattern.functionCall(name='withdraw')"
+    message: |
+      MEDIUM: The withdraw() function has unreachable code after a return statement.
+      
+      ISSUE:
+        return; // Execution stops here
+        userBalances[msg.sender] = 0;  // This never runs!
+        reserveBalance = 0;
+      
+      This is typically a dead code issue, but indicates poor code organization.
+      Consider cleaning up or removing the unreachable section.
+
+  - id: "bonding-curve-state-shadowing"
+    name: "State Variable Shadowing"
+    severity: "medium"
+    pattern: "pattern.variableShadowing() && pattern.variable(name='owner')"
+    message: |
+      MEDIUM: Local variable 'owner' shadows the state variable 'owner'.
+      
+      PROBLEMATIC CODE:
+        address owner = msg.sender;  // Local shadows state var
+        selfdestruct(owner);
+      
+      This causes:
+      1. Sends funds to msg.sender, not contract owner
+      2. Confusing code that's hard to understand
+      3. Potential security bugs in future modifications
+      
+      FIX: Use different variable name or qualify with 'this.owner'
+
+  - id: "bonding-curve-unchecked-transfer"
+    name: "Unchecked Return Value from External Call"
+    severity: "high"
+    pattern: "pattern.functionCall(name='claimTokens') && pattern.noCheck(return=true)"
+    message: |
+      HIGH: token.transferFrom() return value is not checked in claimTokens().
+      
+      RISK:
+      1. Token transfer might fail silently
+      2. Function continues and updates userBalances anyway
+      3. User's balance is decremented but they don't receive tokens
+      4. Tokens become permanently stuck
+      
+      FIX:
+        bool success = token.transferFrom(address(this), msg.sender, amount);
+        require(success, "Transfer failed");
+        userBalances[msg.sender] -= amount;
+
+  - id: "bonding-curve-no-event-logging"
+    name: "Missing Event Logging for State Changes"
+    severity: "low"
+    pattern: "pattern.functionCall(name='burn') && pattern.noEvent()"
+    message: |
+      LOW: The burn() function modifies state but doesn't emit any events.
+      
+      IMPACT:
+      - Off-chain systems can't track state changes
+      - No audit trail for burned tokens
+      - Blockchain analysis becomes difficult
+      - UI/indexers can't detect changes
+      
+      ADD:
+        event TokenBurned(address indexed burner, uint256 amount);
+        
+        function burn(uint256 amount) external {
+            userBalances[msg.sender] -= amount;
+            tokenSupply -= amount;
+            emit TokenBurned(msg.sender, amount);
+        }
+
+  # DESIGN VULNERABILITIES
+  - id: "bonding-curve-no-pause-mechanism"
+    name: "Pause Variable Exists But Is Never Used"
+    severity: "medium"
+    pattern: "pattern.stateVariable(name='paused') && pattern.notUsed()"
+    message: |
+      MEDIUM: State variable 'paused' exists but is never checked or used.
+      
+      This suggests:
+      1. Incomplete implementation
+      2. Emergency pause mechanism was planned but not implemented
+      3. Code detritus that should be cleaned up
+      
+      Either:
+      - Implement pause checks: require(!paused, "Contract is paused");
+      - Remove the unused variable
+      - Complete the emergency stop mechanism
+
+  - id: "bonding-curve-fallback-receives-ether"
+    name: "Fallback Function Allows Unrestricted ETH Deposits"
+    severity: "medium"
+    pattern: "pattern.functionCall(name='fallback'|name='receive') && pattern.noCheck()"
+    message: |
+      MEDIUM: fallback() and receive() accept ETH without any checks.
+      
+      RISKS:
+      1. Allows arbitrary ETH deposits that skew accounting
+      2. Can be used to fund reentrancy attacks
+      3. No event logging of deposits
+      4. No way to distinguish legitimate vs. malicious deposits
+      
+      CONSIDER:
+      - Implement proper deposit function with event logging
+      - Add access control if deposits should be restricted
+      - Track deposit sources for accounting
+      - Or explicitly disable with revert:
+        fallback() external { revert("No fallback"); }
+
+  # ARITHMETIC VULNERABILITIES
+  - id: "bonding-curve-unchecked-arithmetic"
+    name: "Potential Integer Underflow in Burn Function"
+    severity: "medium"
+    pattern: "pattern.functionCall(name='burn') && pattern.subtraction() && pattern.noCheck()"
+    message: |
+      MEDIUM: burn() subtracts from userBalances without checking if balance is sufficient.
+      Note: Solidity 0.8+ has automatic overflow protection, but this is still dangerous.
+      
+      SCENARIO:
+      1. User balance: 100 tokens
+      2. Attacker calls burn(150)
+      3. Even with protection, reverts instead of gracefully handling
+      
+      BETTER APPROACH:
+        require(userBalances[msg.sender] >= amount, "Insufficient balance");
+        userBalances[msg.sender] -= amount;
+        tokenSupply -= amount;
+
+  - id: "bonding-curve-overflow-in-calculation"
+    name: "Integer Overflow in Price Calculation"
+    severity: "critical"
+    pattern: "pattern.calculation(operator='*') && pattern.largeNumbers() && pattern.noCheck(overflow=true)"
+    message: |
+      CRITICAL: getPriceWithMathBug() performs multiplication before division.
+      
+      VULNERABILITY:
+        uint256 price = (amount * reserveBalance) / tokenSupply;
+      
+      ATTACK:
+      1. amount = 2^128
+      2. reserveBalance = 2^128
+      3. amount * reserveBalance overflows before dividing
+      4. Result: Massive underpricing or complete miscalculation
+      
+      IMPACT:
+      - Attacker buys tokens at 99% discount
+      - Contract accounting is corrupted
+      - Complete financial loss possible
+      
+      FIX: Reverse the order or use safe math libraries:
+        uint256 price = amount.mul(reserveBalance).div(tokenSupply);
+      
+      Or better:
+        uint256 price = (amount / tokenSupply) * reserveBalance;
+
+  - id: "bonding-curve-division-by-zero"
+    name: "Division by Zero Vulnerability"
+    severity: "critical"
+    pattern: "pattern.division() && pattern.denominator(variable='tokenSupply') && pattern.noCheck(zero=false)"
+    message: |
+      CRITICAL: calculatePrice() divides by tokenSupply without zero check.
+      
+      SCENARIO:
+      1. tokenSupply is initialized to 1000000e18
+      2. All tokens are burned or sold
+      3. tokenSupply reaches 0
+      4. Any call to calculatePrice() reverts with division by zero
+      5. Contract becomes unusable (DoS attack)
+      
+      EXPLOITATION:
+      1. Attacker buys all available tokens
+      2. Calls burn() on all tokens
+      3. tokenSupply = 0
+      4. Contract is now broken
+      5. No one can buy or sell anymore
+      
+      FIX:
+        require(tokenSupply > 0, "Token supply must be positive");
+        uint256 price = (amount * reserveBalance) / tokenSupply;
+
+  - id: "bonding-curve-off-by-one-error"
+    name: "Off-By-One Error in Loop"
+    severity: "high"
+    pattern: "pattern.loop() && pattern.condition(operator='<=') && pattern.arrayAccess()"
+    message: |
+      HIGH: recordPrices() has an off-by-one error in the loop condition.
+      
+      VULNERABLE CODE:
+        for (uint256 i = 0; i <= prices.length; i++) {  // BUG: <= instead of <
+            priceHistory.push(prices[i]);
+        }
+      
+      WHAT HAPPENS:
+      1. prices.length = 5 (valid indices: 0-4)
+      2. Loop runs: i = 0, 1, 2, 3, 4, 5
+      3. At i = 5: prices[5] is out of bounds!
+      4. Transaction reverts with array out of bounds
+      
+      IMPACT:
+      - Function always fails when called
+      - DoS attack on price recording
+      - Impossible to update price history
+      
+      FIX:
+        for (uint256 i = 0; i < prices.length; i++) {  // Use < not <=
+            priceHistory.push(prices[i]);
+        }
+
+  - id: "bonding-curve-exact-equality-check"
+    name: "Dangerous Exact Equality Check in Validation"
+    severity: "high"
+    pattern: "pattern.require() && pattern.comparison(operator='==') && pattern.validation(money=true)"
+    message: |
+      HIGH: buyWithFuzzyLogic() uses == for payment validation.
+      
+      BROKEN CODE:
+        require(msg.value == amount * 1e18, "Exact payment required");
+      
+      PROBLEM:
+      1. User wants to buy 100 tokens
+      2. Should pay: 100 * 1e18 wei
+      3. User accidentally sends: 100 * 1e18 + 1 wei (1 wei extra)
+      4. Transaction fails!
+      5. User has to retry, wasting gas
+      
+      WORSE SCENARIO (if amount comes from user input):
+      1. User sends exactly amount * 1e18
+      2. Function should accept >= not ==
+      3. Using == prevents legitimate bulk purchases at better rates
+      
+      FIX: Use >= for payments (accept exact or more):
+        require(msg.value >= amount * 1e18, "Insufficient payment");
+        if (msg.value > amount * 1e18) {
+            uint256 refund = msg.value - (amount * 1e18);
+            msg.sender.call{value: refund}("");
+        }
+
+  - id: "bonding-curve-rounding-errors"
+    name: "Rounding Errors Cause Financial Loss"
+    severity: "high"
+    pattern: "pattern.division() && pattern.operands(order='rightToLeft') && pattern.noRounding()"
+    message: |
+      HIGH: calculateBuyAmount() loses precision through integer division.
+      
+      VULNERABLE CODE:
+        uint256 amount = (payment * tokenSupply) / reserveBalance;
+      
+      ROUNDING ATTACK:
+      1. payment = 1 wei
+      2. tokenSupply = 1000000e18
+      3. reserveBalance = 1000000e18
+      4. Calculation: (1 * 1e24) / 1e24 = 1
+      
+      5. payment = 1 wei
+      6. But rounding down means user gets 0.999... tokens
+      7. Rounds DOWN to 0 tokens
+      8. User paid 1 wei but got 0 tokens!
+      
+      CUMULATIVE EFFECT:
+      1. Thousands of users pay but get 0 tokens due to rounding
+      2. Contract gains free ETH without issuing tokens
+      3. Attacker drains value over time with small payments
+      
+      FIX: Implement fee-on-top model or scale amounts:
+        // Scale both numerator and denominator to preserve precision
+        uint256 scaledAmount = (payment * tokenSupply * PRECISION) / reserveBalance;
+        uint256 amount = scaledAmount / PRECISION;
+
+  - id: "bonding-curve-unsafe-type-casting"
+    name: "Unsafe Type Casting with Silent Overflow"
+    severity: "critical"
+    pattern: "pattern.typecast() && pattern.castTo(type='uint128') && pattern.noCheck(overflow=true)"
+    message: |
+      CRITICAL: storePrice() casts uint256 to uint128 without validation.
+      
+      VULNERABLE CODE:
+        uint128 storedPrice = uint128(price);  // Silent overflow!
+      
+      ATTACK SCENARIO:
+      1. price = 2^200 (huge price)
+      2. Cast to uint128: Only keeps lower 128 bits
+      3. Result: price % 2^128 (completely wrong value!)
+      4. Contract uses wrong price for calculations
+      5. All subsequent trades use corrupted price
+      
+      EXAMPLE:
+      Original price: 340282366920938463463374607431768211456
+      Stored price:   0 (corrupted!)
+      
+      IMPACT:
+      - Prices become completely wrong
+      - Attacker can exploit corrupted prices
+      - Contract accounting breaks
+      - Massive financial loss
+      
+      FIX: Validate before casting:
+        require(price <= type(uint128).max, "Price too large");
+        uint128 storedPrice = uint128(price);
+
+  - id: "bonding-curve-missing-bounds-validation"
+    name: "Missing Upper Bounds Validation"
+    severity: "high"
+    pattern: "pattern.functionCall(name='buyWithoutLimits') && pattern.require(check='positive') && pattern.noCheck(max=true)"
+    message: |
+      HIGH: buyWithoutLimits() only checks for positive amounts, no upper bounds.
+      
+      VULNERABLE CODE:
+        require(amount > 0, "Amount must be positive");
+        token.transfer(msg.sender, amount);
+      
+      EXPLOIT:
+      1. Attacker calls buyWithoutLimits(999999999999999999999)
+      2. Contract tries to transfer 10^27 tokens
+      3. If no token balance check: silent failure or partial transfer
+      4. Attacker gets free tokens or contract balance drained
+      
+      SCENARIOS:
+      - Attacker requests more tokens than contract holds
+      - Attacker requests amount > remaining supply
+      - Attacker requests amount causing arithmetic overflow
+      
+      FIX: Add both upper and lower bounds:
+        require(amount > 0, "Amount must be positive");
+        require(amount <= maxBuyAmount, "Amount exceeds maximum");
+        require(amount <= remainingSupply(), "Insufficient supply");
+        require(msg.value >= calculatePrice(amount), "Insufficient payment");
+
+  - id: "bonding-curve-partial-state-update"
+    name: "Partial State Update After Failed External Call"
+    severity: "critical"
+    pattern: "pattern.stateUpdate() && pattern.externalCall() && pattern.orderViolation()"
+    message: |
+      CRITICAL: complexBuyAndBurn() updates state before external call.
+      
+      VULNERABLE CODE:
+        userBalances[msg.sender] += buyAmount;
+        token.transfer(msg.sender, buyAmount);  // Can fail!
+        userBalances[msg.sender] -= burnAmount;
+        tokenSupply -= burnAmount;
+      
+      ATTACK SCENARIO:
+      1. Attacker calls complexBuyAndBurn(1000, 500)
+      2. userBalances[msg.sender] += 1000  // State updated
+      3. token.transfer() fails (insufficient contract balance)
+      4. Execution stops here!
+      5. userBalances[msg.sender] -= 500 never happens
+      6. tokenSupply -= 500 never happens
+      
+      RESULT:
+      1. Attacker's balance is +1000 (but didn't receive tokens!)
+      2. Attacker can call withdraw and steal tokens
+      3. Contract state is corrupted
+      4. Other users' balances are now wrong
+      
+      FIX: Follow CEI pattern and check ALL conditions first:
+        require(userBalances[msg.sender] >= burnAmount, "Insufficient balance");
+        require(msg.value >= calculatePrice(buyAmount), "Insufficient payment");
+        
+        userBalances[msg.sender] += buyAmount;
+        userBalances[msg.sender] -= burnAmount;
+        tokenSupply -= burnAmount;
+        
+        token.transfer(msg.sender, buyAmount);  // External call LAST
+
+  - id: "bonding-curve-race-condition-window"
+    name: "Race Condition Between Price Check and Execution"
+    severity: "high"
+    pattern: "pattern.readState() && pattern.externalCall() && pattern.updateState()"
+    message: |
+      HIGH: atomicSwap() has a race condition between price calculation and update.
+      
+      VULNERABLE CODE:
+        uint256 price = (tokenAmount * reserveBalance) / tokenSupply;
+        // Gap here! Price can change!
+        (bool success, ) = msg.sender.call{value: price}("");
+        userBalances[msg.sender] -= tokenAmount;
+        tokenSupply += tokenAmount;
+      
+      ATTACK FLOW:
+      1. Attacker calls atomicSwap(1000) at price P
+      2. price = (1000 * reserveBalance) / tokenSupply
+      3. Between calculation and update:
+         - Other users call buy(), changing reserveBalance and tokenSupply
+         - Price changes!
+      4. Original price calculation is stale
+      5. Attacker gets wrong price
+      
+      FRONTRUNNING ATTACK:
+      1. Attacker sees atomicSwap(1000) in mempool
+      2. Attacker broadcasts buy() to run BEFORE atomicSwap
+      3. This increases tokenSupply and price
+      4. Attacker's atomicSwap now pays more than calculated!
+      5. Or pays less if they coordinate with others
+      
+      FIX: Make atomic or add checks:
+        uint256 maxPrice = type(uint256).max;  // Or user-specified slippage
+        uint256 price = (tokenAmount * reserveBalance) / tokenSupply;
+        require(price <= maxPrice, "Price slippage exceeded");
+        
+        (bool success, ) = msg.sender.call{value: price}("");
+        require(success);
+        
+        userBalances[msg.sender] -= tokenAmount;
+        tokenSupply += tokenAmount;
+
+summary:
+  description: "This playbook analyzes bonding curve contracts for common DeFi vulnerabilities including reentrancy, access control failures, price manipulation, arithmetic bugs, and fuzzing failures."
+  critical_checks:
+    - "buy() and sell() follow CEI pattern"
+    - "All state-modifying functions have access control"
+    - "tx.origin is not used for authorization"
+    - "selfdestruct is properly protected"
+    - "External calls are checked for success"
+    - "No reentrancy windows exist"
+    - "All arithmetic is safe from overflow/underflow"
+    - "Division by zero is prevented"
+    - "Loop bounds are correct (< not <=)"
+    - "Equality checks use >= for monetary amounts"
+  defi_specific:
+    - "Price calculations preserve precision (no rounding errors)"
+    - "Type casting is validated before overflow"
+    - "Bounds checking on all user inputs"
+    - "State updates are atomic (all or nothing)"
+    - "No race conditions or TOCTOU vulnerabilities"
+    - "Flash loan attacks are mitigated"
+    - "All token transfers are logged with events"
+  fuzzing_vectors:
+    - "Max uint256 values for amounts"
+    - "Zero and one token transfers"
+    - "Extreme reserveBalance and tokenSupply combinations"
+    - "Off-by-one values in loops"
+    - "Type casting boundary values (2^128-1, 2^256-1)"
+    - "Rapid sequential buy/sell operations"
+    - "Concurrent calls to atomicSwap and other functions"
