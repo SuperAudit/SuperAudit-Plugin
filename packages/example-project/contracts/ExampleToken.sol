@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
-/// @title ExampleToken - minimal ERC20-like token for demos
-/// @notice Very small token used only for example/testing in the example-project
+/// @title ExampleToken - Minimal ERC20-like token for Demo
+/// @notice Very small token used only for example/testing in the example-projec
 contract ExampleToken {
     string public name = "ExampleToken";
     string public symbol = "EXT";
@@ -18,7 +18,7 @@ contract ExampleToken {
         balanceOf[msg.sender] = _initialSupply;
         emit Transfer(address(0), msg.sender, _initialSupply);
     }
-
+    
     function transfer(address _to, uint256 _value) external returns (bool) {
         require(balanceOf[msg.sender] >= _value, "Insufficient balance");
         balanceOf[msg.sender] -= _value;
@@ -27,7 +27,7 @@ contract ExampleToken {
         return true;
     }
 
-    // helper mint function for tests/demos only
+    // Helper mint function for tests/demos only
     function mint(address _to, uint256 _value) external returns (bool) {
         totalSupply += _value;
         balanceOf[_to] += _value;
