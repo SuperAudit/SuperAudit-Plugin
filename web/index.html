@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperAudit - Revolutionary Smart Contract Security Analysis</title>
+    <meta name="description" content="Advanced static analysis plugin for Hardhat with Control Flow Graph analysis, YAML programmable audits, and comprehensive vulnerability detection.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="badge">
+                    <span>Advanced Security Analysis</span>
+                </div>
+                
+                <h1 class="hero-title">
+                    Secure Your Smart Contracts
+                    <span class="gradient-text">Before Deployment</span>
+                </h1>
+                
+                <p class="hero-subtitle">
+                    SuperAudit is a comprehensive security analysis plugin for Hardhat that detects vulnerabilities through advanced Control Flow Graph analysis, reentrancy detection, and AI-powered insights.
+                </p>
+                
+                <div class="hero-buttons">
+                    <button class="btn btn-primary" onclick="scrollToSection('install')">
+                        Get Started
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
+                </div>
+                
+                <div class="quick-install">
+                    <div class="code-block">
+                        <code>npm install hardhat-superaudit</code>
+                        <button class="copy-btn" onclick="copyToClipboard('npm install hardhat-superaudit')">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M5.5 4.5H3.5C2.94772 4.5 2.5 4.94772 2.5 5.5V12.5C2.5 13.0523 2.94772 13.5 3.5 13.5H10.5C11.0523 13.5 11.5 13.0523 11.5 12.5V10.5M8.5 2.5H12.5C13.0523 2.5 13.5 2.94772 13.5 3.5V7.5C13.5 8.05228 13.0523 8.5 12.5 8.5H8.5C7.94772 8.5 7.5 8.05228 7.5 7.5V3.5C7.5 2.94772 7.94772 2.5 8.5 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hero-visual">
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="dot dot-red"></span>
+                            <span class="dot dot-yellow"></span>
+                            <span class="dot dot-green"></span>
+                        </div>
+                        <span class="terminal-title">SuperAudit Analysis</span>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-line">
+                            <span class="prompt">$</span>
+                            <span class="command">npx hardhat superaudit</span>
+                        </div>
+                        <div class="terminal-line output">SuperAudit - Advanced Smart Contract Security</div>
+                        <div class="terminal-line output">Analysis Mode: FULL</div>
+                        <div class="terminal-line output">Successfully parsed 4 contract(s)</div>
+                        <div class="terminal-line output terminal-spacer"></div>
+                        <div class="terminal-line critical">
+                            <span class="severity-badge critical">[CRITICAL]</span>
+                            <span>external-before-state at line 58</span>
+                        </div>
+                        <div class="terminal-line detail">External call before state update (CEI violation)</div>
+                        <div class="terminal-line detail">Reentrancy vulnerability detected</div>
+                        <div class="terminal-line output terminal-spacer"></div>
+                        <div class="terminal-line summary">
+                            <span class="summary-item critical">Critical: 5</span>
+                            <span class="summary-item high">High: 10</span>
+                            <span class="summary-item medium">Medium: 20</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Powerful Security Analysis</h2>
+                <p class="section-subtitle">Advanced detection capabilities that go beyond basic linting</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Multi-Agent AI System</h3>
+                    <p>Built on an agentic smart-contract auditing framework that combines custom AST analysis with specialized AI agents. Multiple agents collaborate to detect vulnerabilities, reason across code components, and provide detailed security insights powered by GPT-4 and Claude.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>Control Flow Graphs</h3>
+                    <p>Sophisticated CFG analysis detects vulnerabilities through execution path analysis</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>Reentrancy Detection</h3>
+                    <p>Advanced attack path identification with detailed exploit scenarios and mitigation strategies</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>YAML Playbooks</h3>
+                    <p>Programmable, shareable audit strategies for consistent security reviews</p>
+                </div>
+                
+                
+                <div class="feature-card">
+                    <h3>GitHub Integration</h3>
+                    <p>SARIF format support for seamless CI/CD and GitHub Code Scanning integration</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>Sandboxed Execution</h3>
+                    <p>Runs audits inside a gVisor-based sandbox to safely execute untrusted code and automate security workflows without risk to your system</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Architecture Section -->
+    <section class="ai-architecture">
+        <div class="container">
+            <div class="ai-architecture-content">
+                <div class="ai-architecture-text">
+                    <h2 class="section-title">Agentic AI Architecture</h2>
+                    <p class="section-subtitle">Next-generation security analysis powered by specialized AI agents</p>
+                    
+                    <div class="ai-features-list">
+                        <div class="ai-feature-item">
+                            <div>
+                                <h4>Multi-Agent Collaboration</h4>
+                                <p>Specialized AI agents work together to analyze different aspects of your smart contracts - from AST parsing to vulnerability detection and fix generation.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ai-feature-item">
+                            <div>
+                                <h4>Knowledge Graph Reasoning</h4>
+                                <p>Builds relation-first knowledge graphs to reason across multiple abstraction layers, understanding authentication flows, value transfers, and protocol invariants.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ai-feature-item">
+                            <div>
+                                <h4>Hypothesis-Driven Analysis</h4>
+                                <p>Maintains persistent vulnerability hypotheses that evolve as evidence accumulates, similar to how expert auditors reason about complex systems.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ai-feature-item">
+                            <div>
+                                <h4>Sandboxed Execution</h4>
+                                <p>Runs all analyses in a gVisor-based sandbox environment, ensuring complete isolation when executing potentially malicious code.</p>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Customers Section -->
+    <section class="customers">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Trusted By Leading Teams</h2>
+                <p class="section-subtitle">Join innovative companies securing their smart contracts with SuperAudit</p>
+            </div>
+            
+            <div class="customers-grid">
+                <a href="https://x.com/Zippel_Labs" target="_blank" class="customer-card">
+                    <img src="https://pbs.twimg.com/profile_images/2018015046069288960/tcmA7y2r_200x200.jpg" alt="Zippel Labs" class="customer-logo">
+                    <span class="customer-name">Zippel Labs</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Section -->
+    <section class="installation" id="install">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Get Started in 3 Steps</h2>
+                <p class="section-subtitle">Start securing your contracts in under a minute</p>
+            </div>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Install the Plugin</h3>
+                        <div class="code-block">
+                            <code>npm install hardhat-superaudit</code>
+                            <button class="copy-btn" onclick="copyToClipboard('npm install hardhat-superaudit')">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M5.5 4.5H3.5C2.94772 4.5 2.5 4.94772 2.5 5.5V12.5C2.5 13.0523 2.94772 13.5 3.5 13.5H10.5C11.0523 13.5 11.5 13.0523 11.5 12.5V10.5M8.5 2.5H12.5C13.0523 2.5 13.5 2.94772 13.5 3.5V7.5C13.5 8.05228 13.0523 8.5 12.5 8.5H8.5C7.94772 8.5 7.5 8.05228 7.5 7.5V3.5C7.5 2.94772 7.94772 2.5 8.5 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Configure Hardhat</h3>
+                        <div class="code-block">
+                            <code>import superauditPlugin from "hardhat-superaudit";</code>
+                            <button class="copy-btn" onclick="copyToClipboard('import superauditPlugin from \\'hardhat-superaudit\\';')">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M5.5 4.5H3.5C2.94772 4.5 2.5 4.94772 2.5 5.5V12.5C2.5 13.0523 2.94772 13.5 3.5 13.5H10.5C11.0523 13.5 11.5 13.0523 11.5 12.5V10.5M8.5 2.5H12.5C13.0523 2.5 13.5 2.94772 13.5 3.5V7.5C13.5 8.05228 13.0523 8.5 12.5 8.5H8.5C7.94772 8.5 7.5 8.05228 7.5 7.5V3.5C7.5 2.94772 7.94772 2.5 8.5 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Run Analysis</h3>
+                        <div class="code-block">
+                            <code>npx hardhat superaudit</code>
+                            <button class="copy-btn" onclick="copyToClipboard('npx hardhat superaudit')">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M5.5 4.5H3.5C2.94772 4.5 2.5 4.94772 2.5 5.5V12.5C2.5 13.0523 2.94772 13.5 3.5 13.5H10.5C11.0523 13.5 11.5 13.0523 11.5 12.5V10.5M8.5 2.5H12.5C13.0523 2.5 13.5 2.94772 13.5 3.5V7.5C13.5 8.05228 13.0523 8.5 12.5 8.5H8.5C7.94772 8.5 7.5 8.05228 7.5 7.5V3.5C7.5 2.94772 7.94772 2.5 8.5 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Secure Your Smart Contracts?</h2>
+                <p>Join developers securing their contracts with SuperAudit</p>
+                <div class="cta-buttons">
+                    <button class="btn btn-primary" onclick="window.location.href='#install'">
+                        Get Started Now
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3>SuperAudit</h3>
+                    <p>Advanced Smart Contract Security Analysis</p>
+                </div>
+                <div class="footer-links">
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 SuperAudit. MIT License.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
